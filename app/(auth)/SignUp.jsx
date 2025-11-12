@@ -106,7 +106,7 @@ const SignUp = () => {
   if (user) {
     router.replace("/Home");
   }
-}, [user]);
+}, [user,router]);
 
         if(isAuthenticated){
           return(
