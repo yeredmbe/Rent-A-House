@@ -6,7 +6,8 @@ export const notificationStore = create((set) => ({
     notifications:[],
     notificationCount:0,
     getNotification:async (id) => {
-         const storedToken = await AsyncStorage.getItem('token');
+        try{
+            const storedToken = await AsyncStorage.getItem('token');
   const token = storedToken?.startsWith('"') ? JSON.parse(storedToken) : storedToken;
         set({ isLoading: true });
        const response = await fetch(`https://rent-a-house-r0jt.onrender.com/api/v1/notification/notifications/${id}`, {
@@ -18,6 +19,11 @@ export const notificationStore = create((set) => ({
        })
        const data = await response.json()
        set({ notifications: data.notifications, isLoading: false });
+        }catch(error){
+            set({ notifications: [], isLoading: false });
+            console.log("Error fetching notifications:", error.message);
+        }
+         
     },
     deleteNotification: async (id) => {
 
@@ -33,7 +39,8 @@ export const notificationStore = create((set) => ({
         const data = await response.json()
         console.log(data)
     },
-    markAsRead: async (id) => {
+ markAsRead: async (id) => {
+    try {
         const storedToken = await AsyncStorage.getItem('token');
         const token = storedToken?.startsWith('"') ? JSON.parse(storedToken) : storedToken;
         const response = await fetch(`https://rent-a-house-r0jt.onrender.com/api/v1/notification/notifications/${id}`, {
@@ -45,7 +52,12 @@ export const notificationStore = create((set) => ({
         })
         const data = await response.json()
         console.log(data)
-    },
+        return data; // Add this return statement
+    } catch (error) {
+        console.error('Error marking as read:', error)
+        throw error;
+    }
+},
 getNotificationCount: async (id) => {
     try {
         const storedToken = await AsyncStorage.getItem('token');

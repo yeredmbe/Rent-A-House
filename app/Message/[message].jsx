@@ -26,7 +26,7 @@ const Message = () => {
   //  const scrollIntoView = useScrollIntoView();
 
    useEffect(() => {
-    if(!message===selectedUser._id) return;
+    if(message!==selectedUser._id) return;
     getMessages(message)
 
      subscribeToMessages()

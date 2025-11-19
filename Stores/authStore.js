@@ -166,53 +166,58 @@ login: async (user) => {
 },
 
  getUser: async () => {
-  set({ isAuthenticated: true });
-  try {
-    const storedToken = await AsyncStorage.getItem('token');
-    // console.log("Token from storage:", storedToken);
+  set({ isLoading: true });
 
-    if (!storedToken) {
-      set({ error: "No authentication token found", isLoading: false, isAuthenticated: false });
+  try {
+    // Get token and user from storage
+    const storedToken = await AsyncStorage.getItem("token");
+    const storedUser = await AsyncStorage.getItem("user");
+
+    // If nothing stored → user is logged out
+    if (!storedToken || !storedUser) {
+      set({
+        user: null,
+        token: null,
+        isAuthenticated: false,
+        isLoading: false,
+      });
       return;
     }
 
-    // Parse the token if it was stringified
-    const token = storedToken.startsWith('"') ? JSON.parse(storedToken) : storedToken;
-    // console.log("Parsed token:", token);
-     set({ token: token });
-    const response = await fetch("https://rent-a-house-r0jt.onrender.com/api/v1/user/get-user", {
-      method: "GET", 
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${token}`,
-      },
+    // Parse values if stringified
+    const token = storedToken.startsWith('"')
+      ? JSON.parse(storedToken)
+      : storedToken;
+
+    const user = storedUser.startsWith('{')
+      ? JSON.parse(storedUser)
+      : storedUser;
+
+    // SUCCESS → restore session instantly
+    set({
+      user,
+      token,
+      isAuthenticated: true,
+      isLoading: false,
     });
 
-    // Check if the response is OK
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.log("HTTP Error:", response.status, errorText);
-      throw new Error(`Server returned ${response.status}: ${errorText}`);
-    }
-
-    const data = await response.json();
+    // Connect socket AFTER user is restored
     get().connectSocket();
-    // console.log("Full API response:", data); // Log the entire response
-    
-    // Check if user exists in response
-    if (!data.user) {
-      console.warn("User data not found in response. Available keys:", Object.keys(data));
-    }
-
-    set({ user: data.user, isAuthenticated: true,token }); // Keep authenticated if successful
-    // console.log("User data:", token);
-    // console.log("User data:", data.user);
 
   } catch (error) {
-    set({ error: error.message, isAuthenticated: false });
-    console.log("Error in getUser:", error.message);
+    console.log("Error restoring user:", error.message);
+
+    // Ensure clean logout state
+    set({
+      user: null,
+      token: null,
+      isAuthenticated: false,
+      isLoading: false,
+      error: error.message,
+    });
   }
 },
+
 logout: async () => {
      router.replace("/SignIn");
     set({ user: null, token: null, isAuthenticated: false });

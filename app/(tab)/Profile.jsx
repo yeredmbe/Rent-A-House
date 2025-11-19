@@ -182,10 +182,10 @@ showToast({
   
   const data = [
     {id:1, src:icons.love, title:"Favorite", link:"/Favorites"},
-    {id:2, src:icons.security, title:"Setting", link:"/Setting"},
+    // {id:2, src:icons.security, title:"Setting", link:"/Setting"},
     // {id:3, src:icons.payment, title:"Payment", link:"/Payment"},
     // {id:4, src:icons.translate, title:"Language", link:"/Language"},
-    {id:5, src:icons.help, title:"Help-Center", link:"/Help-Center"},
+    // {id:5, src:icons.help, title:"Help-Center", link:"/Help-Center"},
     {id:6, src:icons.policy, title:"Policies", link:"/Policy"},
   ];
 
