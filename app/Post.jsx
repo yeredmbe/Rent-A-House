@@ -65,6 +65,7 @@ const Post = () => {
     { label: "Cottage", value: "Cottage" },
     { label: "Mansion", value: "Mansion" },
     { label: "Room", value: "Room" },
+    {label:"Store", Value:"Store"}
   ];
 
     const pickImageDetails = async () => {

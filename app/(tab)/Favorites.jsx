@@ -83,7 +83,7 @@ const Favorite = () => {
         ListEmptyComponent={()=><View className="w-full items-center justify-center my-5 p-4">
       <View className="w-24 h-40 items-center my-5 justify-center"/>
       <Text className="text-2xl font-bold text-gray-900">No Favorites Yet</Text>
-      <Text className="text-gray-400 mt-2">Start a conversation with someone!</Text>
+      <Text className="text-gray-400 mt-2">Add a house to your Favorite list!</Text>
       <View className="w-full items-center justify-center">
         <Image source={icons.touch} className="size-[100px] my-5 opacity-65" />
       </View>

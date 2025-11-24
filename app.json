@@ -9,17 +9,14 @@
     "scheme": "rentahouse",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
-
     "splash": {
       "image": "./assets/images/splash.png",
       "resizeMode": "cover",
       "backgroundColor": "#ffffff"
     },
-
     "ios": {
       "supportsTablet": true
     },
-
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#ffffff",
@@ -29,30 +26,26 @@
       "predictiveBackGestureEnabled": false,
       "package": "com.anonymous.RentAHouse"
     },
-
     "web": {
       "output": "static",
       "favicon": "./assets/images/adaptive-icon.png"
     },
-
     "plugins": [
       "expo-router",
       "expo-splash-screen",
-      "expo-web-browser"
+      "expo-web-browser",
+      "expo-localization"
     ],
-
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
     },
-
     "extra": {
       "router": {},
       "eas": {
         "projectId": "b5f1e9d5-5e73-4bdb-8540-147020f287ba"
       }
     },
-
     "owner": "yungbrat"
   }
 }

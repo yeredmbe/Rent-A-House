@@ -170,7 +170,7 @@ const SignUp = () => {
                         </TouchableOpacity>
                     </View>
                     <View className='flex items-center justify-center mt-3 mx-5'>
-                        <InputField label="Name" placeholder="Enter your email" styles={"mx-2 "} value={formData.name} onTextChange={(text) => setFormData({ ...formData, name: text })} />
+                        <InputField label="Name" placeholder="Enter your name" styles={"mx-2 "} value={formData.name} onTextChange={(text) => setFormData({ ...formData, name: text })} />
                         <InputField label="Email" placeholder="Enter your email" styles={"mx-2 "} value={formData.email} onTextChange={(text) => setFormData({ ...formData, email: text })} />
                         <InputField label="Password" placeholder="********" styles={"mx-2"} value={formData.password} onTextChange={(text) => setFormData({ ...formData, password: text })} />
                         <View className="flex flex-row mt-2">

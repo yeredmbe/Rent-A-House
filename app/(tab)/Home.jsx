@@ -68,7 +68,7 @@ const Home = () => {
         <Text className="text-xl font-bold text-[#124BCC] mx-5 mb-2">Available Houses</Text>
         <FlatList
           className="m-3"
-          data={["All","House", "Apartment", "Villa", "Office","Studio","Penthouse","Townhouse","Duplex","Bungalow","Cottage","Mansion","Room"]}
+          data={["All","House", "Apartment", "Villa", "Office","Studio","Penthouse","Townhouse","Duplex","Bungalow","Cottage","Mansion","Room","Store"]}
           renderItem={({item, index}) => (
             <TouchableOpacity 
               onPress={()=>{setCategory(item); 

@@ -43,7 +43,7 @@ const Message = () => {
               <View className="flex flex-row items-center">
     <View className="">
       <Text className="text-base font-semibold text-[#124BCC]">{item.name}</Text>
-      <Text className="text-sm text-gray-500">New message {item.role}.</Text>
+      <Text className="text-sm text-gray-500">New message from {item.role}.</Text>
         <Text className="text-xs text-gray-400 ">{new Date(item.createdAt).toDateString()}</Text>
     </View>
     </View>

@@ -165,7 +165,7 @@ DebugInfo(listings)
           </TouchableOpacity>
         </TouchableOpacity>
         <Text className="text-xl font-bold text-[#124BCC]">
-          {user?.name}'s Listings
+          {user?.name} Listings
         </Text>
         <View className="size-10" />
       </View>

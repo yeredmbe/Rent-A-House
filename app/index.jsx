@@ -68,7 +68,7 @@ useEffect(() => {
         <TouchableOpacity onPress={() => {scrollRef.current.scrollToOffset({ offset: (parseInt(currentIndex )- 1) * Dimensions.get("window").width, animated: true })}} activeOpacity={0.7} className=" flex flex-row items-center justify-start bg-[#124BCC]  rounded-lg px-5 py-2 absolute bottom-12 left-9">
           <Entypo name="chevron-left" size={30} color="white" />
           <Text className="text-white">Previous</Text>
-        </TouchableOpacity>
+        </TouchableOpacity> 
       )}
 */}
       {currentIndex === (Images.length - 1).toString() && (
