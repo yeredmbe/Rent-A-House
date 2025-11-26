@@ -1,5 +1,6 @@
 import { router } from 'expo-router'
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { ActivityIndicator, Alert, FlatList, Image, Text, TouchableOpacity, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import icons from '../../constant/icons'
@@ -49,7 +50,7 @@ function formatRelativeTime(dateString) {
     const diffInYears = Math.floor(diffInDays / 365);
     return `${diffInYears}y`;
   } catch (error) {
-    return 'Unknown time';
+    return 'Unknown time', error;
   }
 }
 
@@ -58,6 +59,7 @@ const Notification = () => {
   const { getNotification, notifications, markAsRead, isLoading } = notificationStore()
   const {setSelectedUser} = messageStore()
   const [refreshing, setRefreshing] = useState(false)
+    const { t } = useTranslation()
 
   useEffect(() => {
     const fetchData = async () => {
@@ -73,7 +75,7 @@ const Notification = () => {
     }
     
     fetchData()
-  }, [user?._id])
+  }, [user?._id, getUser, getNotification])
 
   const handleRefresh = async () => {
     setRefreshing(true)
@@ -126,17 +128,17 @@ const handleNotificationPress = (item) => {
     
     switch (item.notification_type) {
       case "message":
-        return `New message from ${item.senderId?.name || 'Unknown'}`;
+        return `${t("New message from")} ${item.senderId?.name || 'Unknown'}`;
       case "favorites":
-        return "Your house has been favorited";
+        return t("Your house has been favorited");
       case "system":
-        return "New message from admin";
+        return t("New message from admin");
       case "welcome":
-        return "Welcome, nice to have you aboard";
+        return t("Welcome, nice to have you aboard");
       case "review":
-        return "A review has been added to your property";
+        return t("A review has been added to your property");
       case "new_house":
-        return "A house has been added in your area";
+        return t("A house has been added in your area");
       default:
         return "New notification";
     }
@@ -170,20 +172,20 @@ const handleNotificationPress = (item) => {
     return (
       <SafeAreaView className="bg-white flex-1 justify-center items-center">
         <ActivityIndicator size="large" color="#124BCC" />
-        <Text className="text-gray-500 mt-2">Loading notifications...</Text>
+        <Text className="text-gray-500 mt-2">{t("LoadingNotification")}</Text>
       </SafeAreaView>
     )
   }
 
   return (
-    <SafeAreaView className="bg-white h-full">
+    <SafeAreaView className="bg-white h-screen">
       <Text className='text-2xl font-bold text-[#124BCC] text-center py-4'>Notifications</Text>
       <View className="flex-1">
         {safeNotifications.length === 0 ? (
           <View className="flex flex-col items-center justify-center h-full bg-stone-100">
             <Image source={icons.design} className="w-68 h-52" resizeMode='contain' alt="Notification Icon" />
-            <Text className="text-2xl font-semibold text-[#124BCC] mt-4">No Notifications Found</Text>
-            <Text className="text-gray-500 mt-2">You're all caught up!</Text>
+            <Text className="text-2xl font-semibold text-[#124BCC] mt-4">{t("noNotification")}</Text>
+            <Text className="text-gray-500 mt-2">{t("youAreCaughtUp")}</Text>
           </View>
         ) : (
           <FlatList 

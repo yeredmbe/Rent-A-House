@@ -1,6 +1,7 @@
 import { Entypo } from "@expo/vector-icons";
 import { router } from "expo-router";
 import React, { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { ActivityIndicator, Dimensions, FlatList, Image, Platform, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useStore } from '../Stores/authStore';
@@ -9,6 +10,7 @@ export default function Index() {
   const { getUser, user,isLoading } = useStore();
   const [currentIndex, setCurrentIndex] = useState(0);
   const scrollRef=React.useRef();
+    const { t } = useTranslation()
 
     
   const Images = [
@@ -73,7 +75,7 @@ useEffect(() => {
 */}
       {currentIndex === (Images.length - 1).toString() && (
         <TouchableOpacity onPress={() => router.push("/(auth)/SignUp")} activeOpacity={0.7} className=" flex flex-row items-center justify-start bg-[#124BCC] rounded-lg px-5 py-2 absolute bottom-12 right-9">
-          <Text className="text-white">Continue</Text>
+          <Text className="text-white">{t("Continue")}</Text>
           <Entypo name="chevron-right" size={30} color="white" />
         </TouchableOpacity>
       )}

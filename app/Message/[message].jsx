@@ -2,16 +2,14 @@ import { Entypo } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Alert, Image, KeyboardAvoidingView, Platform, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { showToast } from 'rn-snappy-toast';
 import { useStore } from '../../Stores/authStore';
 import { messageStore } from '../../Stores/messageStore';
 import icon from '../../constant/icons';
-// import {
-//   wrapScrollView,
-//   useScrollIntoView,
-// } from 'react-native-scroll-into-view';
+
 
 const Message = () => {
     const [messagez, setMessage] = useState({
@@ -22,8 +20,7 @@ const Message = () => {
     const {user,getUser}=useStore()
     const {message}=useLocalSearchParams()
     const scrollRef=useRef();
-  //  const CustomScrollView = wrapScrollView(ScrollView);
-  //  const scrollIntoView = useScrollIntoView();
+    const { t } = useTranslation()
 
    useEffect(() => {
     if(message!==selectedUser._id) return;
@@ -129,7 +126,7 @@ const Message = () => {
                     <TouchableOpacity activeOpacity={0.7} onPress={() => router.back()} className="size-10 rounded-full bg-gray-200 items-center justify-center">
                         <Entypo name="chevron-left" size={30} color="#124BCC" />
                     </TouchableOpacity>
-                    <Text className='text-xl font-bold text-[#124BCC]'>Chats</Text>
+                    <Text className='text-xl font-bold text-[#124BCC]'>{t("Chats")}</Text>
                 </View>
                 <ScrollView className="flex-1 mx-3"
                     ref={scrollRef} 
@@ -152,7 +149,7 @@ const Message = () => {
                 </ScrollView>
                 <View className="px-4 py-1 w-full flex-row items-center justify-between">
                     <TextInput
-                        placeholder="Type your message..."
+                        placeholder={t("Enter your message")}
                         multiline={true}
                         placeholderTextColor={'gray'}
                         className="text-gray-500 text-md border border-gray-200 rounded-full px-5 py-3 flex-1"

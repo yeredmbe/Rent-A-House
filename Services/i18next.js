@@ -2,10 +2,9 @@
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import * as Localization from 'expo-localization'
 import i18next from "i18next"
-import { initReactI18next } from "react-i18next"
+import { initReactI18next, } from "react-i18next"
 import en from "../locales/en.json"
 import fr from "../locales/fr.json"
-
 
 const lngResource={
     en:{
@@ -22,7 +21,7 @@ async function loadLanguage() {
 }
 
 export const initLanguage = async () => {
-  const lng = await loadLanguage()
+  const lng = await loadLanguage();
 
   await i18next.use(initReactI18next)
     .init({
@@ -31,8 +30,10 @@ export const initLanguage = async () => {
       lng,
       fallbackLng: 'en',
       interpolation: { escapeValue: false },
-    })
-}
+    });
+
+  return true;
+};
 
 export const changeLanguage = async (lang) => {
   await i18next.changeLanguage(lang)

@@ -1,12 +1,12 @@
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, KeyboardAvoidingView, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { showToast } from 'rn-snappy-toast';
 import CustomButton from '../../components/CustomButton';
 import InputField from '../../components/InputField';
 import { useStore } from '../../Stores/authStore';
-
 
 
 
@@ -17,6 +17,7 @@ const SignIn = () => {
     password: ''
   })
   const router = useRouter();
+    const { t } = useTranslation()
   
   const onhandlelogin = async () => {
     if(isLoading) return;
@@ -45,20 +46,20 @@ const SignIn = () => {
   (async () => {
     await getUser();
   })();
-}, []);
+}, [getUser]);
  
    useEffect(() => {
   if (user) {
     router.replace("/Home");
   }
-}, [user]);
+}, [user, router]);
 
    
     if(isAuthenticated){
       return(
   <View className="bg-white w-full h-full items-center justify-center"> 
         <ActivityIndicator size="large" color="#124BCC" animating={isAuthenticated} />
-      <Text className="mt-2 ">Loading...</Text>
+      <Text className="mt-2 ">{t("Loading")}</Text>
   </View>
       )}
   
@@ -69,28 +70,28 @@ const SignIn = () => {
             <View className="h-28 android:h-20 mb-8"/>
              <View className='flex-1 flex items-center justify-center my-3 mx-5'>
             <View className="flex flex-col items-center justify-center">
-                    <Text className="font-bold text-2xl">Welcome back to{" "}</Text>
+                    <Text className="font-bold text-2xl">{t("WelcomeBack")}{" "}</Text>
                     <Text className="text-[#124BCC] my-3 font-bold text-5xl font-Churchillbold">Rent A House</Text>
-                         <Text className="text-sm font-bold text-center font-Churchill">Login to continue.</Text>
+                         <Text className="text-sm font-bold text-center font-Churchill">{t("LoginToContinue")}</Text>
                 </View>
                 </View>
 
            <View className='flex w-full items-center justify-center mt-3 px-5'>
-          <InputField label="Email" placeholder="Enter your email"  styles={"mx-2 "} value={formData.email} onTextChange={(text)=>setFormData({...formData,email:text})}  />
-          <InputField label="Password" placeholder="********"  styles={"mx-2"} value={formData.password} onTextChange={(text)=>setFormData({...formData,password:text})}   />
+          <InputField label={t("Email")} placeholder={t("emailPlaceHolder")}  styles={"mx-2 "} value={formData.email} onTextChange={(text)=>setFormData({...formData,email:text})}  />
+          <InputField label={t("Password")} placeholder="********"  styles={"mx-2"} value={formData.password} onTextChange={(text)=>setFormData({...formData,password:text})}   />
   
                 <View className="flex justify-center items-center pt-5 flex-row gap-2">
                           <Text className="text-lg text-black font-pregular">
-                           Don{"'"}t have an account?
+                          {t("DontHaveAccount")}
                           </Text>
                            <TouchableOpacity
                            activeOpacity={0.8}
                            onPress={() => router.replace("/SignUp")}>
-                          <Text className="text-lg font-semibold text-[#124BCC] my-1">Sign Up</Text> 
+                          <Text className="text-lg font-semibold text-[#124BCC] my-1">{t("SignUp")}</Text> 
                          </TouchableOpacity>
                         </View>
 
-                       <CustomButton title="Login"
+                       <CustomButton title={t("Login")}
                          containerStyles="rounded-xl my-1 py-4"
                          handlePress={onhandlelogin}
                          isLoading={isLoading}

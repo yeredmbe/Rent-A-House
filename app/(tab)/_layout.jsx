@@ -1,13 +1,16 @@
 import { Tabs } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useCallback, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { Image, Text, View } from "react-native";
 import Icons from "../../constant/icons";
 import { useStore } from "../../Stores/authStore";
 import { notificationStore } from "../../Stores/notificationStore";
 
+
 // ✅ Memoized TabBarIcon so it won't re-render unless props change
 const TabBarIcon =(({ color, label, icons }) => {
+
   return (
     <View className="flex flex-col w-full flex-1 min-w-[115px] min-h-14 pt-4 justify-center items-center">
       <Image source={icons} tintColor={color} className="size-5" />
@@ -19,6 +22,7 @@ const TabBarIcon =(({ color, label, icons }) => {
 });
 
 const TabLayout = () => {
+   const { t } = useTranslation();
   const { user, getUser } = useStore();
   const { getNotificationCount, notificationCount } = notificationStore();
 
@@ -66,7 +70,7 @@ const TabLayout = () => {
             tabBarIcon: ({ focused, color }) => (
               <TabBarIcon
                 color={color}
-                label="Home"
+                label={t("Home")}
                 icons={focused ? Icons.home : Icons.homee}
               />
             ),
@@ -78,7 +82,7 @@ const TabLayout = () => {
             tabBarIcon: ({ focused, color }) => (
               <TabBarIcon
                 color={color}
-                label="Favorite"
+                label={t("Favorite")}
                 icons={focused ? Icons.heart : Icons.love}
               />
             ),
@@ -90,7 +94,7 @@ const TabLayout = () => {
             tabBarIcon: ({ focused, color }) => (
               <TabBarIcon
                 color={color}
-                label="Profile"
+                label={t("Profile")}
                 icons={focused ? Icons.userr : Icons.user}
               />
             ),

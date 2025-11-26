@@ -2,6 +2,7 @@ import { Entypo } from '@expo/vector-icons'
 import * as ImagePicker from 'expo-image-picker'
 import { router } from 'expo-router'
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { ActivityIndicator, Alert, Image, KeyboardAvoidingView, Modal, RefreshControl, ScrollView, Share, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import { Dropdown } from 'react-native-element-dropdown'
 import { SafeAreaView } from 'react-native-safe-area-context'
@@ -17,6 +18,7 @@ const Profile = () => {
   const {user, getUser, logout, editProfile, isLoading, updateProfileImage, isProfilePicUploaded} = useStore()
   const [image_url, setImage] = useState(user?.image_url || null);
   const [isUserLoading, setIsUserLoading] = useState(true);
+  const { t } = useTranslation();
 
  
 
@@ -106,10 +108,10 @@ const pickImage = async () => {
   ];
 
   const handleLogout = async () => {
-        Alert.alert("Logout", "Are you sure you want to logout?", [
-          { text: "Cancel", style: "cancel" },
+        Alert.alert(t("Logout"), "Are you sure you want to logout?", [
+          { text: t("Cancel"), style: "cancel" },
           {
-            text: "Logout",
+            text: t("Logout"),
             style: "destructive",
             onPress:async () => {
               await logout();
@@ -123,7 +125,7 @@ const pickImage = async () => {
   const onShare = async () => {
     try {
       const result = await Share.share({
-        message: 'faurzanext.com',
+        message: 'https://faurzanext.com',
       });
       if (result.action === Share.sharedAction) {
         if (result.activityType) {
@@ -181,12 +183,12 @@ showToast({
 }
   
   const data = [
-    {id:1, src:icons.love, title:"Favorite", link:"/Favorites"},
-    // {id:2, src:icons.security, title:"Setting", link:"/Setting"},
+    {id:1, src:icons.love, title:t("Favorite"), link:"/Favorites"},
+    {id:2, src:icons.security, title:t("Settings"), link:"/Setting"},
     // {id:3, src:icons.payment, title:"Payment", link:"/Payment"},
     // {id:4, src:icons.translate, title:"Language", link:"/Language"},
     // {id:5, src:icons.help, title:"Help-Center", link:"/Help-Center"},
-    {id:6, src:icons.policy, title:"Policies", link:"/Policy"},
+    {id:6, src:icons.policy, title:t("Policies"), link:"/Policy"},
   ];
 
   // Show loading indicator while user data is being fetched
@@ -194,7 +196,7 @@ showToast({
     return (
       <SafeAreaView className="flex-1 bg-white justify-center items-center">
         <ActivityIndicator size="large" color="#124BCC" />
-        <Text className="text-sm text-gray-500 mt-2">Loading...</Text>
+        <Text className="text-sm text-gray-500 mt-2">{t("Loading")}</Text>
       </SafeAreaView>
     );
   }
@@ -210,7 +212,7 @@ showToast({
         <TouchableOpacity activeOpacity={0.7} onPress={() => router.back()} className="size-10 rounded-full bg-gray-200 items-center justify-center">
           <Entypo name="chevron-left" size={30} color="#124BCC" />
         </TouchableOpacity>
-        <Text className="text-2xl font-bold text-[#124BCC]  mx-5 my-5">Profile</Text>
+        <Text className="text-2xl font-bold text-[#124BCC]  mx-5 my-5">{t("Profile")}</Text>
       </View>
       
       <View className="w-full flex flex-col items-center justify-center relative">
@@ -248,7 +250,7 @@ showToast({
           <TouchableOpacity activeOpacity={0.7} onPress={() => router.push('/Listing')} className="flex flex-row items-center justify-between ml-3 mr-5 my-2">
             <View className="flex flex-row items-center w-48">
               <Image source={icons.blog} className="size-6 ml-5" tintColor={"#124BCC"} />
-              <Text className="mx-3 font-semibold">My Listings</Text>
+              <Text className="mx-3 font-semibold">{t("myListings")}</Text>
             </View>
             <Entypo name="chevron-right" size={24} color="gray" />
           </TouchableOpacity>
@@ -258,16 +260,17 @@ showToast({
           <TouchableOpacity activeOpacity={0.7} onPress={() => router.push('/Post')} className="flex flex-row items-center justify-between ml-3 mr-5 my-2">
             <View className="flex flex-row items-center w-48">
               <Image source={icons.add} className="size-6 ml-5" tintColor={"#124BCC"} />
-              <Text className="mx-3 font-semibold">Create post</Text>
+              <Text className="mx-3 font-semibold">{t("createPost")}</Text>
             </View>
             <Entypo name="chevron-right" size={24} color="gray" />
           </TouchableOpacity>
         )}
         
+        
         <TouchableOpacity activeOpacity={0.7} onPress={onShare} className="flex flex-row items-center justify-between ml-3 mr-5 my-2">
           <View className="flex flex-row items-center w-48">
             <Image source={icons.invite} className="size-6 ml-5" tintColor={"#124BCC"} />
-            <Text className="mx-3 font-semibold">Invite-Friend</Text>
+            <Text className="mx-3 font-semibold">{t("Invite-Friend")}</Text>
           </View>
           <Entypo name="chevron-right" size={24} color="gray" />
         </TouchableOpacity>
@@ -275,7 +278,7 @@ showToast({
         <TouchableOpacity activeOpacity={0.7} onPress={handleLogout} className="flex flex-row items-center justify-between ml-3 mr-5 mt-2 android:mb-10">
           <View className="flex flex-row items-center w-48">
             <Image source={icons.exit} className="size-6 ml-5" tintColor={"#dc2626"} />
-            <Text className="mx-3 font-semibold text-red-600">Logout</Text>
+            <Text className="mx-3 font-semibold text-red-600">{t("Logout")}</Text>
           </View>
           <Entypo name="chevron-right" size={24} color="gray" />
         </TouchableOpacity>
@@ -316,7 +319,7 @@ showToast({
             
             <View className='flex items-center justify-center mt-3 mx-5'>
               <InputField 
-                label="Name" 
+                label={t("name")} 
                 placeholder="JohnDoe" 
                 value={formData.name} 
                 onTextChange={(text) => setFormData({ ...formData, name: text })}  
@@ -364,7 +367,7 @@ showToast({
               />
               
               <CustomButton 
-                title="Update Profile"
+                title={t("updateProfile")}
                 containerStyles="rounded-xl my-5 py-4"
                 handlePress={handleEdit}
                 isLoading={isLoading}

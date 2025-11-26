@@ -3,6 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, Dimensions, FlatList, Image, ImageBackground, KeyboardAvoidingView, Linking, Modal, Platform, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { showToast } from 'rn-snappy-toast';
 import icons from '../../constant/icons';
@@ -10,6 +11,7 @@ import image from '../../constant/image';
 import { useStore } from '../../Stores/authStore';
 import { homeStore } from '../../Stores/homeStore';
 import { messageStore } from '../../Stores/messageStore';
+
 
 
 
@@ -80,6 +82,7 @@ const DetailPage = () => {
   const [isOpen, setIsOpen] = useState(false)
   const [text, setText]=useState("")
   const [isClicked,setIsClicked]=useState(false)
+  const { t } = useTranslation()
 
 
   useEffect(() => {
@@ -195,7 +198,7 @@ const DetailPage = () => {
           {isLoading ? <View className="w-full h-full bg-white items-center justify-center my-5 p-4">
             <View className="w-24 h-20 items-center my-5 justify-center" />
             <ActivityIndicator size="large" color="#124BCC" animating={isLoading} />
-            <Text className="text-gray-400 mt-2">Please wait...</Text>
+            <Text className="text-gray-400 mt-2">{t("Please wait")}</Text>
           </View> :
             <View>
               <View className="px-2 flex-row items-center justify-between">
@@ -216,12 +219,12 @@ const DetailPage = () => {
                     <Text className="text-black text-xl ml-1 font-Churchillbold">{Home?.price && formatNumber(Home?.price)} XAF</Text>
                   </View>
                   {user?._id !== Home?.userId?._id && <TouchableOpacity activeOpacity={0.7} className={`${Home?.isAvailable ? "bg-[#12cc21a2]" : "bg-[#dc2626]"}  border-green-900 rounded-full p-2 my-3`}>
-                    <Text className="text-white text-center font-bold">{Home?.isAvailable ? "Available" : "Taken"}</Text>
+                    <Text className="text-white text-center font-bold">{Home?.isAvailable ? t("Available") : t("Taken")}</Text>
                   </TouchableOpacity>}
                 </View>
               </View>
               <View className="my-2 w-full px-2">
-                <Text className="text-lg font-bold">Title</Text>
+                <Text className="text-lg font-bold">{t("title")}</Text>
                 <Text className="text-gray-500 mt-1">{Home?.address}</Text>
               </View>
               <View className="my-5 w-full px-2">
@@ -232,13 +235,13 @@ const DetailPage = () => {
                 <Image source={icons.review} className="size-6" />
                 <Text className="text-gray-600 ml-1 font-Churchill">
                   {Home?.reviews?.length === 0
-                    ? "No review"
-                    : `${Home?.reviews?.length} ${Home?.reviews?.length === 1 ? "review" : "reviews"}`
+                    ? t("No review")
+                    : `${Home?.reviews?.length} ${Home?.reviews?.length === 1 ? t("review") : t("reviews")}`
                   }
                 </Text>
               </TouchableOpacity>
               <View className="my-8 w-full px-2 flex flex-row items-center justify-start">
-                <Text className="text-lg font-bold">Category:</Text>
+                <Text className="text-lg font-bold">{t("Category")}:</Text>
                 <Text className="text-gray-500 mt-1 ml-2">{Home?.category}</Text>
               </View>
               <View className="my-2 w-full flex-row items-center justify-start px-2">
@@ -269,7 +272,7 @@ const DetailPage = () => {
               {user?._id !== Home?.userId?._id && <View className="mt-4 mb-8 w-full px-2">
                 <TouchableOpacity activeOpacity={0.7} className="bg-[#124BCC] p-3 rounded-full items-center justify-center"
                   onPress={checkUser}>
-                  <Text className="text-white text-lg font-semibold">Message {Home?.userId?.name}</Text>
+                  <Text className="text-white text-lg font-semibold">{t("Message")} {Home?.userId?.name}</Text>
                 </TouchableOpacity>
               </View>}
             </View>}

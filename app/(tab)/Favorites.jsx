@@ -2,6 +2,7 @@ import { Entypo } from '@expo/vector-icons'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { router } from 'expo-router'
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { ActivityIndicator, FlatList, Image, Text, TouchableOpacity, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import icons from '../../constant/icons'
@@ -11,6 +12,7 @@ import icons from '../../constant/icons'
 const Favorite = () => {
       const [isLoading,setLoading]=useState(true)
       const [homes,setHomes]=useState([])
+      const { t } = useTranslation()
     
      const getFavorites=async()=>{
       try{
@@ -46,7 +48,7 @@ const Favorite = () => {
                 <TouchableOpacity activeOpacity={0.7} onPress={() => router.back()} className="size-10 rounded-full bg-gray-200 items-center justify-center">
                         <Entypo name="chevron-left" size={30} color="#124BCC" />
                     </TouchableOpacity>
-      <Text className='text-2xl font-bold text-[#124BCC]'>Favorite</Text>
+      <Text className='text-2xl font-bold text-[#124BCC]'>{t("Favorite")}</Text>
       </View>
        {isLoading ? (
         <View className="h-full justify-center items-center">
@@ -82,8 +84,8 @@ const Favorite = () => {
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={()=><View className="w-full items-center justify-center my-5 p-4">
       <View className="w-24 h-40 items-center my-5 justify-center"/>
-      <Text className="text-2xl font-bold text-gray-900">No Favorites Yet</Text>
-      <Text className="text-gray-400 mt-2">Add a house to your Favorite list!</Text>
+      <Text className="text-2xl font-bold text-gray-900">{t("noFavorite")}</Text>
+      <Text className="text-gray-400 mt-2">{t("AddToFavoriteMessage")}</Text>
       <View className="w-full items-center justify-center">
         <Image source={icons.touch} className="size-[100px] my-5 opacity-65" />
       </View>

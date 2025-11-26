@@ -17,9 +17,9 @@ const InputField = ({label,value,onTextChange,styles,placeholder,name}) => {
         placeholderTextColor={"gray"}
         multiline={label==="Description"?true:false}
         className="flex-1 text-black"
-        secureTextEntry ={label === "Password" && !showPassword ? true : false}
+        secureTextEntry ={(label === "Password" || label ==="Mot de passe" ) && !showPassword ? true : false}
         />
-        {label === "Password" && (
+        {label === "Password" || label ==="Mot de passe" && (
          <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
          {showPassword ? <Entypo name="eye" size={24} color="#124BCC" /> : <Entypo name="eye-with-line" size={24} color="#124BCC" />}
          </TouchableOpacity>

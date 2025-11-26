@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { router } from 'expo-router'
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { ActivityIndicator, FlatList, Image, Switch, Text, TouchableOpacity, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { showToast } from 'rn-snappy-toast'
@@ -8,7 +9,6 @@ import { default as icon, default as icons } from '../constant/icons'
 import image from '../constant/image'
 import { useStore } from '../Stores/authStore'
 import { homeStore } from '../Stores/homeStore'
-
 function formatNumber(number) {
     // Convert to string and split into integer and decimal parts
     const numStr = Number(number).toString();
@@ -33,6 +33,7 @@ const Listing = () => {
   const [refreshing, setRefreshing] = useState(false)
  const [isLoading, setLoading]=useState(true)
 const [availability, setAvailability] = useState({}); 
+const { t } = useTranslation()
 
 const toggleHouseAvailability = async (id) => {
   try {
@@ -131,7 +132,7 @@ DebugInfo(listings)
          <View className="flex flex-row items-center">
             <Image source={icons.review} className="size-6" />
             <Text className="text-gray-600 ml-1 font-Churchill"> {item?.reviews?.length === 0
-                    ? "No review"
+                    ? t("No review")
                     : `${item?.reviews?.length} ${item?.reviews?.length === 1 ? "review" : "reviews"}`
                   }</Text>
          </View>
@@ -165,7 +166,7 @@ DebugInfo(listings)
           </TouchableOpacity>
         </TouchableOpacity>
         <Text className="text-xl font-bold text-[#124BCC]">
-          {user?.name} Listings
+          {user?.name} {t("Listings")}
         </Text>
         <View className="size-10" />
       </View>
@@ -174,12 +175,12 @@ DebugInfo(listings)
       {userHouseLoading && !refreshing ? (
         <View className="flex-1 items-center justify-center">
           <ActivityIndicator size="large" color="#124BCC" />
-          <Text className="mt-2 text-gray-600">Loading your listings...</Text>
+          <Text className="mt-2 text-gray-600">{t("Loading your listings")}</Text>
         </View>
       ) : (
         <View className="flex-1 p-4">
           <Text className="text-gray-600 mb-4">
-            {listings.length} {listings.length === 1 ? 'listing' : 'listings'} found
+            {listings.length} {listings.length === 1 ? t('listing') : t('Listings')} {t("found")}
           </Text>
 
           {listings.length === 0 ? (

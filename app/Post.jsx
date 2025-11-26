@@ -1,6 +1,7 @@
 import * as ImagePicker from 'expo-image-picker';
-import { router, useNavigation } from 'expo-router';
+import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, Alert, Image, KeyboardAvoidingView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import PhoneInput from 'react-native-international-phone-number';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -18,7 +19,7 @@ const Post = () => {
   const { createHome} = homeStore();
   const [loading, setLoading] = useState(false);
   const { user, getUser } = useStore(); // Get token directly from useStore
-  const navigation = useNavigation();
+  const { t } = useTranslation();
   
   useEffect(() => {
     getUser();
@@ -52,20 +53,20 @@ const Post = () => {
     { label: 'Bertoua', value: 'Bertoua' }
   ];
 
-    const category = [
-    { label: 'House', value: 'House' },
-    { label: 'Apartment', value: 'Apartment' },
-    { label: 'Villa', value: 'Villa' },
-    { label: 'Office', value: 'Office' },
-    { label: "Studio", value: "Studio" },
-    { label: "Townhouse", value: "Townhouse" },
-    { label: "Penthouse", value: "Penthouse" },
-    { label: "Duplex", value: "Duplex" },
-    { label: "Bungalow", value: "Bungalow" },
-    { label: "Cottage", value: "Cottage" },
-    { label: "Mansion", value: "Mansion" },
-    { label: "Room", value: "Room" },
-    {label:"Store", Value:"Store"}
+    const category =  [
+    { label: t('House'), value: 'House' },
+    { label: t('Apartment'), value: 'Apartment' },
+    { label: t('Villa'), value: 'Villa' },
+    { label: t('Office'), value: 'Office' },
+    { label: t("Studio"), value: "Studio" },
+    { label: t("Townhouse"), value: "Townhouse" },
+    { label: t("Penthouse"), value: "Penthouse" },
+    { label: t("Duplex"), value: "Duplex" },
+    { label: t("Bungalow"), value: "Bungalow" },
+    { label: t("Cottage"), value: "Cottage" },
+    { label: t("Mansion"), value: "Mansion" },
+    { label: t("Room"), value: "Room" },
+    {label:t("Store"), Value:"Store"}
   ];
 
     const pickImageDetails = async () => {
@@ -264,26 +265,26 @@ const Post = () => {
                   <TouchableOpacity activeOpacity={0.7} onPress={() => router.back()} className={`size-10 rounded-full ${user?.image_url ? "" : "bg-gray-200 "}items-center justify-center`}>
                     <Image source={user?.image_url?{uri:user?.image_url} : icon.userr} className={`${user?.image_url ? "size-10 rounded-full" : "size-6"}`} tintColor={user?.image_url ? "" : '#124BCC'} resizeMode='cover' />
                   </TouchableOpacity>
-                  <Text className='text-xl font-bold text-[#124BCC]'>List Property</Text>
+                  <Text className='text-xl font-bold text-[#124BCC]'>{t("List Property")}</Text>
                 </View>
         <ScrollView className=" h-full bg-gray-100">
 
           <View className='flex items-center justify-center mt-3 mx-5'>
-            <InputField label="City" placeholder="Enter your city" styles={"mx-2 "}
+            <InputField label={t("City")} placeholder={t("cityPlaceholder")} styles={"mx-2 "}
              value={formData.city} 
              onTextChange={(text) => setFormData({ ...formData, city: text })} />
 
-            <InputField label="Title" placeholder="Enter a title" styles={"mx-2 "} 
+            <InputField label={t("title")} placeholder={t("titlePlaceholder")} styles={"mx-2 "} 
              value={formData.address} 
              onTextChange={(text) => setFormData({ ...formData, address: text })} />
 
              <View className=" w-full mx-2">
-                          <Text className="text-black font-semibold text-md my-2">Category</Text>
+                          <Text className="text-black font-semibold text-md my-2">{t("Category")}</Text>
                           <DropdownInput
                           style={"border border-[#124BCC] w-[100%] flex  rounded-lg p-4 mt-2"}
         data={category}
-        onChange={(item) => setFormData({ ...formData, category: item.label })}
-        placeholder="Select category"
+        onChange={(item) => setFormData({ ...formData, category: item.value })}
+        placeholder={t("selectCategory")}
       />
                         </View>
                         
@@ -296,7 +297,7 @@ const Post = () => {
         onChangePhoneNumber={(inputValue)=>setFormData({...formData,telephone:inputValue})}
         selectedCountry={selectedCountry}
         onChangeSelectedCountry={((selectedCountry)=>setSelectedCountry(selectedCountry))}
-        placeholder="Enter your number"
+        placeholder={t("Phone")}
         defaultValue="+23760000000"
         placeholderTextColor="gray"
       />
@@ -308,7 +309,7 @@ const Post = () => {
                 <Image source={{ uri: formData.home_cover }} className="w-full h-full rounded-xl" /> :
                 <TouchableOpacity onPress={pickImage} activeOpacity={0.7} className="flex flex-col items-center justify-center">
                   <Image source={icon.cloud} className="size-16 opacity-65" tintColor={"#124BCC"} />
-                  <Text className="text-[#124BCC] font-semibold text-md mx-2">Upload Cover Image</Text>
+                  <Text className="text-[#124BCC] font-semibold text-md mx-2">{t("imageCover")}</Text>
                 </TouchableOpacity>}
               {formData.home_cover && <TouchableOpacity onPress={() => setFormData({ ...formData, home_cover: "" })} activeOpacity={0.7} className="absolute -top-1 -right-2">
                 <Image source={icon.cancel} className="size-5" tintColor={"#4b5563"} />
@@ -317,7 +318,7 @@ const Post = () => {
 
             <InputField 
               label="Description" 
-              placeholder="Describe your house..." 
+              placeholder={t("DiscribeHouse")}
               styles={"mx-2"} 
               value={formData.description} 
               onTextChange={(text) => setFormData({ ...formData, description: text })} 
@@ -330,8 +331,9 @@ const Post = () => {
                         <DropdownInput
                          style={"border border-[#124BCC] w-[100%] flex  rounded-lg p-4 mt-2"}
         data={data}
+        value={formData.region}
         onChange={(item) => setFormData({ ...formData, region: item.label })}
-        placeholder="Select region"
+        placeholder={t("SelectRegion")}
       />
                      </View>
                      
@@ -341,7 +343,7 @@ const Post = () => {
            onTextChange={(text) => setFormData({ ...formData, whatsapp_url: text })} />
 
             <InputField label="Facebook" 
-            placeholder="Optional..." styles={"mx-2"} 
+            placeholder={t("Optional")} styles={"mx-2"} 
             value={formData.facebook_url}
              onTextChange={(text) => setFormData({ ...formData, facebook_url: text })} />
 
@@ -376,13 +378,13 @@ const Post = () => {
       className="flex flex-col items-center justify-center"
     >
       <Image source={icon.cloud} className="size-16 opacity-65" tintColor={"#124BCC"} />
-      <Text className="text-[#124BCC] font-semibold text-md mx-2">Upload Details</Text>
+      <Text className="text-[#124BCC] font-semibold text-md mx-2">{t("uploadDetails")}</Text>
     </TouchableOpacity>
   )}
 </ScrollView>
              <InputField 
-              label="Price" 
-              placeholder="Enter price" 
+              label={t("Price")} 
+              placeholder={t("enterPrice")} 
               keyBoardType="numeric" 
               styles={"mx-2"} 
               value={formData.price} 
@@ -390,7 +392,7 @@ const Post = () => {
             />
             
             <CustomButton 
-              title="Upload Post"
+              title={t("uploadPost")}
               containerStyles="rounded-xl my-5 py-4 w-full"
               textStyles="text-white text-lg font-semibold"
               handlePress={handlePost}

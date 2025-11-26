@@ -2,6 +2,7 @@
 import { Entypo } from '@expo/vector-icons'
 import { router } from 'expo-router'
 import { useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Image, ScrollView, Text, TouchableOpacity, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import icons from '../constant/icons'
@@ -10,6 +11,7 @@ import { messageStore } from '../Stores/messageStore'
 
 const Message = () => {
   const {getChatUsers,chatUsers,setSelectedUser,toggleReadMessages}=messageStore()
+  const { t } = useTranslation()
 
   useEffect(() => {
     getChatUsers()
@@ -27,8 +29,8 @@ const Message = () => {
     <ScrollView className="bg-gray-100 " >
     { chatUsers?.length === 0 ? <View className="w-full items-center justify-center my-5 p-4">
       <View className="w-24 h-40 items-center my-5 justify-center"/>
-      <Text className="text-2xl font-bold text-gray-900">No Messages Yet</Text>
-      <Text className="text-gray-400 mt-2">Start a conversation with someone!</Text>
+      <Text className="text-2xl font-bold text-gray-900">{t("noMessages")}</Text>
+      <Text className="text-gray-400 mt-2">{t("startConversation")}</Text>
       <View className="w-full items-center justify-center">
         <Image source={icons.message} className="size-[100px] my-5 opacity-65" tintColor={"#124BCC"} />
       </View>
@@ -43,7 +45,7 @@ const Message = () => {
               <View className="flex flex-row items-center">
     <View className="">
       <Text className="text-base font-semibold text-[#124BCC]">{item.name}</Text>
-      <Text className="text-sm text-gray-500">New message from {item.role}.</Text>
+      <Text className="text-sm text-gray-500">{t("newMessage")} {item.role === "landLord"? t("LandLord") : "Client"}.</Text>
         <Text className="text-xs text-gray-400 ">{new Date(item.createdAt).toDateString()}</Text>
     </View>
     </View>

@@ -1,6 +1,7 @@
 import { Entypo } from '@expo/vector-icons'
 import { router, useLocalSearchParams } from 'expo-router'
 import { useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Image, ScrollView, Text, TouchableOpacity, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useStore } from '../../Stores/authStore'
@@ -10,6 +11,7 @@ import icons from '../../constant/icons'
 const Others = () => {
   const { isLoadProfile, userProfile, getUserProfile } = useStore()
   const { Others } = useLocalSearchParams()
+  const { t } = useTranslation()
 
   const fetchUserProfile = async () => {
     try {
@@ -29,7 +31,7 @@ const Others = () => {
         <TouchableOpacity activeOpacity={0.7} onPress={() => router.back()} className="size-10 rounded-full bg-gray-200 items-center justify-center">
           <Entypo name="chevron-left" size={30} color="#124BCC" />
         </TouchableOpacity>
-        <Text className='text-2xl font-bold text-[#124BCC]'>Profile Overview</Text>
+        <Text className='text-2xl font-bold text-[#124BCC]'>{t("ProfileOverview")}</Text>
       </View>
       <ScrollView>
         <View className="w-full flex flex-col items-center justify-center relative">
@@ -54,14 +56,14 @@ const Others = () => {
             <Text className="ml-2">{userProfile?.age}</Text>
           </View>
           <View className="flex flex-row mt-1  items-center justify-start">
-            <Text className=" font-bold text-[#124BCC]">User type:</Text>
-            <Text className="ml-2">{userProfile?.role === "landLord" ? "A Land lord" : "A Tenant"}</Text>
+            <Text className=" font-bold text-[#124BCC]">{t("User type")}:</Text>
+            <Text className="ml-2">{userProfile?.role === "landLord" ? t("LandLord") : "Client"}</Text>
           </View>
 
           <View className=" mt-3  items-center justify-start w-full">
             <Image source={icons.biometric} className="size-72 opacity-45 self-center" resizeMode='contain' />
           </View>
-          <Text className="mt-4 text-center font-Churchill text-md text-black">Sorry we intern to keep our user's data private!</Text>
+          <Text className="mt-4 text-center font-Churchill text-md text-black">{t("Sorry we intern to keep our user's data private!")}</Text>
         </View>
 
       </ScrollView>
