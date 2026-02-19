@@ -22,7 +22,7 @@
     "Home":"Accueil",
     "RencentlyAdded":"Récemment ajoutés",
     "AvailableHouses":"Maisons disponibles",
-    "noHomeAvailable":"Aucune maison disponible",
+    "noHomeAvailable":"Aucun resultat trouvé",
     "tryAgain":"Réessayer",
     "LoadingNotification":"Chargement des notifications...",
     "noNotification":"Aucune notification trouvée",
@@ -134,7 +134,10 @@
 "Reload page":"Recharger la page",
 "No Homes Found Reload page":"Aucune maison trouvée, rechargez la page",
 "home status change successfully":"Statut du logement modifié avec succès",
-"Are you sure you want to logout?":"Voulez-vous vous deconnecté?"
+"Are you sure you want to logout?":"Voulez-vous vous deconnecté?",
+"Please agree to our terms and conditions":"Veuillez accepter nos conditions générales.",
+"All fields are required.":"Tous les champs doivent être remplis.",
+"Push notifications disabled. You can enable them later in settings.":"Les notifications push sont désactivées. Vous pouvez les activer plus tard dans les paramètres."
 
 
 }

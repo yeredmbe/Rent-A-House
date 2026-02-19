@@ -91,7 +91,10 @@ const Message = () => {
 
    
     const handleSendMessage = () => {
-        if (!messagez.text && !messagez.image_url) return;
+        const hasText = messagez.text.trim().length > 0;
+        const hasImage = messagez.image_url !== "";
+
+       if (!hasText && !hasImage) return; // block only if NEITHER has content
 
         // Create a clean message object with only the properties that have values
         const cleanMessage = {

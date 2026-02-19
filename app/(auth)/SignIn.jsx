@@ -23,7 +23,7 @@ const SignIn = () => {
     if(isLoading) return;
      if ( !formData.email || !formData.password) {
                 showToast({
-                  message: "All fields are required.",
+                  message: t("All fields are required."),
                   duration: 5000,
                   type: 'error',
                   position: 'top',

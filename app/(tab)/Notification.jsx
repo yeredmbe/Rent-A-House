@@ -62,20 +62,20 @@ const Notification = () => {
     const { t } = useTranslation()
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        await getUser()
-        if (user?._id) {
-          await getNotification(user._id)
-        }
-      } catch (error) {
-        console.error('Error fetching data:', error)
-        Alert.alert('Error', 'Failed to load notifications')
+  const fetchData = async () => {
+    try {
+      await getUser()
+      if (user?._id) {
+        await getNotification(user._id)
       }
+    } catch (error) {
+      console.error('Error fetching data:', error)
+      Alert.alert('Error', 'Failed to load notifications')
     }
-    
-    fetchData()
-  }, [user?._id, getUser, getNotification])
+  }
+  
+  fetchData()
+}, []) // ✅ Only run once on mount
 
   const handleRefresh = async () => {
     setRefreshing(true)

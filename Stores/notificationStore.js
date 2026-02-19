@@ -1,6 +1,10 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { create } from "zustand";
 
+const CACHE_KEYS = {
+    notifications: (id) => `cached_notifications_${id}`,
+};
+
 export const notificationStore = create((set) => ({
     isLoading: false,
     notifications:[],
@@ -8,17 +12,27 @@ export const notificationStore = create((set) => ({
     getNotification:async (id) => {
         try{
             const storedToken = await AsyncStorage.getItem('token');
-  const token = storedToken?.startsWith('"') ? JSON.parse(storedToken) : storedToken;
-        set({ isLoading: true });
-       const response = await fetch(`https://rent-a-house-r0jt.onrender.com/api/v1/notification/notifications/${id}`, {
-           method: "GET",
-           headers: {
-               "Content-Type": "application/json",
-               "Authorization": `Bearer ${token}`
-           }
-       })
-       const data = await response.json()
-       set({ notifications: data.notifications, isLoading: false });
+            const token = storedToken?.startsWith('"') ? JSON.parse(storedToken) : storedToken;
+
+            // Load cache immediately so UI renders without waiting
+            const cached = await AsyncStorage.getItem(CACHE_KEYS.notifications(id));
+            if (cached) {
+                set({ notifications: JSON.parse(cached) });
+            }
+
+            // Only show spinner if there's no cached data
+            set({ isLoading: !cached });
+
+            const response = await fetch(`https://rent-a-house-r0jt.onrender.com/api/v1/notification/notifications/${id}`, {
+                method: "GET",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${token}`
+                }
+            })
+            const data = await response.json()
+            set({ notifications: data.notifications, isLoading: false });
+            await AsyncStorage.setItem(CACHE_KEYS.notifications(id), JSON.stringify(data.notifications));
         }catch(error){
             set({ notifications: [], isLoading: false });
             console.log("Error fetching notifications:", error.message);
@@ -93,4 +107,3 @@ getNotificationCount: async (id) => {
 
     
 }));
-

@@ -53,6 +53,7 @@ import user from '../assets/icons/user.png';
 import userr from '../assets/icons/userr.png';
 import security from '../assets/icons/verified.png';
 import whatsapp from '../assets/icons/whatsapp.png';
+import maison from "../assets/icons/maison.png"
 
 
 export default {
@@ -110,7 +111,6 @@ export default {
     information,
     neutral,
     filter,
-    setting
-
-
+    setting,
+    maison
 };

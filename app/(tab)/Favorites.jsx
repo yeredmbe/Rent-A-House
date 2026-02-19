@@ -67,7 +67,7 @@ const Favorite = () => {
               <View className="flex flex-row items-center">
     <View className="">
       <Text className="text-base font-semibold text-[#124BCC]">{item.address}</Text>
-      <Text className="text-sm text-gray-500">{item.description.slice(0,40)}...</Text>
+      <Text className="text-sm text-gray-500">{item.description.slice(0,40)}{item.description.length >40 ? "...": ""}</Text>
         <Text className="text-xs text-gray-400 ">{item.category}</Text>
     </View>
     </View>

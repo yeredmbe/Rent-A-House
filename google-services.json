@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "907339194072",
+    "project_id": "expopush-6cf39",
+    "storage_bucket": "expopush-6cf39.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:907339194072:android:774f28747092a428a741ad",
+        "android_client_info": {
+          "package_name": "com.anonymous.RentAHouse"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyACHKoxaunpEHgtN8UH4m18jz6TzfQMZHI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:907339194072:android:7a6feecaa8ce8f12a741ad",
+        "android_client_info": {
+          "package_name": "com.faurzanext.rentahouse"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyACHKoxaunpEHgtN8UH4m18jz6TzfQMZHI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

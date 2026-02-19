@@ -76,14 +76,14 @@ const pickImage = async () => {
 
 
   useEffect(() => {
-    const fetchUser = async () => {
-      setIsUserLoading(true);
-      await getUser();
-      setIsUserLoading(false);
-    };
-    
-    fetchUser();
-  }, [getUser]);
+  const fetchUser = async () => {
+    setIsUserLoading(true);
+    await getUser();
+    setIsUserLoading(false);
+  };
+  
+  fetchUser();
+}, []); // ✅ Only run once
 
   const [formData, setFormData] = useState({
     name: user?.name || "",

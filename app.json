@@ -24,8 +24,7 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "com.anonymous.RentAHouse",
-      "googleServicesFile": "./android/app/google-services.json"
+      "package": "com.anonymous.RentAHouse"
     },
     "web": {
       "output": "static",

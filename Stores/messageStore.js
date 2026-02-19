@@ -3,6 +3,11 @@ import { create } from 'zustand';
 import uploadToCloudinary from "../app/lib/uploadToCloudinary";
 import { useStore } from "./authStore";
 
+const CACHE_KEYS = {
+    messages: (id) => `cached_messages_${id}`,
+    chatUsers: 'cached_chat_users',
+};
+
 export const messageStore = create((set,get) => ({
     isLoading:false,
     users:[],
@@ -40,7 +45,10 @@ export const messageStore = create((set,get) => ({
         
         if (res.ok) {
             const data = await res.json();
-            set({ messages: [...get().messages, data.newMessage], isLoading: false });
+            const updatedMessages = [...get().messages, data.newMessage];
+            set({ messages: updatedMessages, isLoading: false });
+            // Update cache with new message included
+            await AsyncStorage.setItem(CACHE_KEYS.messages(id), JSON.stringify(updatedMessages));
         } else {
             // Handle non-OK responses
             const errorData = await res.json();
@@ -57,7 +65,16 @@ export const messageStore = create((set,get) => ({
    getMessages:async(id)=>{
         const storedToken = await AsyncStorage.getItem('token');
          const token = storedToken?.startsWith('"') ? JSON.parse(storedToken) : storedToken;
-        set({isLoading:true})
+
+        // Load cache immediately so UI renders without waiting
+        const cached = await AsyncStorage.getItem(CACHE_KEYS.messages(id));
+        if (cached) {
+            set({ messages: JSON.parse(cached) });
+        }
+
+        // Only show spinner if there's no cached data
+        set({ isLoading: !cached });
+
         try {
             const res = await fetch(`https://rent-a-house-r0jt.onrender.com/api/v1/message/get-messages/${id}`,{
                 method:"GET",
@@ -69,6 +86,7 @@ export const messageStore = create((set,get) => ({
             if(res.ok){
                 const data = await res.json()
                 set({messages:data.Messages,isLoading:false})
+                await AsyncStorage.setItem(CACHE_KEYS.messages(id), JSON.stringify(data.Messages));
             }else {
   const errorData = await res.json();
 //   Alert.alert("Error", errorData.message || "Failed to send message");
@@ -81,7 +99,16 @@ export const messageStore = create((set,get) => ({
     getChatUsers:async()=>{
          const storedToken = await AsyncStorage.getItem('token');
          const token = storedToken?.startsWith('"') ? JSON.parse(storedToken) : storedToken;
-        set({isLoading:true})
+
+        // Load cache immediately
+        const cached = await AsyncStorage.getItem(CACHE_KEYS.chatUsers);
+        if (cached) {
+            set({ chatUsers: JSON.parse(cached) });
+        }
+
+        // Only show spinner if there's no cached data
+        set({ isLoading: !cached });
+
         try {
             const res = await fetch(`https://rent-a-house-r0jt.onrender.com/api/v1/message/`,{
                 method:"GET",
@@ -93,6 +120,7 @@ export const messageStore = create((set,get) => ({
             if(res.ok){
                 const data = await res.json()
                 set({chatUsers:data.favorites,isLoading:false})
+                await AsyncStorage.setItem(CACHE_KEYS.chatUsers, JSON.stringify(data.favorites));
             }
         } catch (error) {
             set({chatUsers:null,isLoading:false})

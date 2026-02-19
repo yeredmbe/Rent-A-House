@@ -43,6 +43,7 @@ const Home = () => {
   // }
 
      const categories = [
+      {label:'All',value:'All'},
     { label: 'House', value: 'House' },
     { label: 'Apartment', value: 'Apartment' },
     { label: 'Villa', value: 'Villa' },
@@ -105,15 +106,16 @@ const Home = () => {
         /> 
       </View>
 
-      {isLoading? <SafeAreaView className="flex-1 bg-white justify-center items-center">
-        <ActivityIndicator size="large" color="#124BCC" />
-      </SafeAreaView>:
+      {isLoading && filteredHomes.length === 0 ? (
+  <SafeAreaView className="flex-1 bg-white justify-center items-center">
+    <ActivityIndicator size="large" color="#124BCC" />
+  </SafeAreaView>
+) :
       <View className='flex-1'>
   {filteredHomes && filteredHomes.length > 0 ? (
     <FlatList 
       className="mx-3 flex-1"
       contentContainerStyle={{
-        alignItems:"center",
         flexGrow: 1, // Allow content to grow
       }}
       data={filteredHomes} 
@@ -124,9 +126,11 @@ const Home = () => {
       // Add these props for better scrolling
       alwaysBounceVertical={true}
       bounces={true}
+      columnWrapperStyle={{ justifyContent: 'space-between' }} 
     />
   ) : (
     <View className="flex-1 justify-center items-center">
+      <Image source={icon.maison} className="size-36" />
       <Text className="text-gray-500">{t("noHomeAvailable")}</Text>
       <TouchableOpacity 
         activeOpacity={0.7}

@@ -2,7 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Image, Text, TouchableOpacity, View } from 'react-native';
+import { Image, Text, TouchableOpacity, View,Dimensions } from 'react-native';
 import { showToast } from 'rn-snappy-toast';
 import icons from '../constant/icons';
 import image from '../constant/image';
@@ -18,6 +18,9 @@ const Card = ({home_cover,category,address,price,_id}) => {
 useEffect(()=>{
     getUser()
 },[])
+
+const { width } = Dimensions.get('window');
+const cardWidth = (width - 48) / 2;
 
 const addToFavorite=async(id)=>{
                   const storedToken = await AsyncStorage.getItem('token');
@@ -70,7 +73,7 @@ const addToFavorite=async(id)=>{
 }
   return (
      
-        <View className="flex android:w-[160px] w-[185px] mx-2 my-1">
+       <View style={{ width: cardWidth, marginHorizontal: 8, marginVertical: 4 }}>
           <TouchableOpacity activeOpacity={0.7} onPress={()=>router.push(`/House/${_id}`)} >
      <Image source={loading?image.load:{uri:home_cover}} className='w-full h-64 rounded-lg relative' resizeMethod='contain'
      onLoadEnd={()=>setLoading(false)} />
@@ -78,7 +81,7 @@ const addToFavorite=async(id)=>{
      <View className="flex flex-row justify-between items-center px-3">
      <View>
        <Text className="text-white font-bold text-xl absolute bottom-10 ">{!loading && category}</Text>
-       <Text className="text-white text-xs absolute bottom-7 ">{!loading && address}</Text>
+       <Text className="text-white text-xs absolute bottom-7 ">{!loading && address.slice(0,27)} {address.length >27?"...":""}</Text>
        </View>
        <View className="flex flex-row items-center justify-between w-full">
          <TouchableOpacity activeOpacity={0.7} 

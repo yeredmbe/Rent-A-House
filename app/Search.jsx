@@ -3,7 +3,6 @@ import { Slider } from '@miblanchard/react-native-slider'
 import * as Haptics from 'expo-haptics'
 import { router } from 'expo-router'
 import { useEffect, useState } from 'react'
-import { useTranslation } from 'react-i18next'
 import { ActivityIndicator, FlatList, Image, Text, TextInput, TouchableOpacity, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import DropdownInput from "../components/SelectInput"
@@ -27,10 +26,11 @@ const Search = () => {
   })
   const [isLoading,setIsLoading]=useState(true)
   const [count,setCount]=useState(0)
+  const [mounted, setMounted] = useState(false);
   const { filteredHomes,filterCount,getHouseOnFilter,loading } = homeStore();
   const {countmessages}=messageStore()
   const { user, getUser } = useStore()
-  const { t } = useTranslation()
+
   useEffect(() => {
     getUser();
   }, [])
@@ -45,29 +45,28 @@ const Search = () => {
   },[])
 
    // Apply filters when component mounts or filters change
-  useEffect(() => {
-    handleFilter();
-  }, [Category]); // Re-filter when category changes
+ useEffect(() => {
+  if (!mounted) {
+    setMounted(true);
+    return;
+  }
+  handleFilter();
+}, [Category]);
 
-     const Categories =  [
-    { label: t('House'), value: 'House' },
-    { label: t('Apartment'), value: 'Apartment' },
-    { label: t('Villa'), value: 'Villa' },
-    { label: t('Office'), value: 'Office' },
-    { label: t("Studio"), value: "Studio" },
-    { label: t("Townhouse"), value: "Townhouse" },
-    { label: t("Penthouse"), value: "Penthouse" },
-    { label: t("Duplex"), value: "Duplex" },
-    { label: t("Bungalow"), value: "Bungalow" },
-    { label: t("Cottage"), value: "Cottage" },
-    { label: t("Mansion"), value: "Mansion" },
-    { label: t("Room"), value: "Room" },
-    {label:t("Store"), Value:"Store"}
+     const Categories = [
+    { label: 'House', value: 'House' },
+    { label: 'Apartment', value: 'Apartment' },
+    { label: 'Villa', value: 'Villa' },
+    { label: 'Office', value: 'Office' },
+    { label: "Studio", value: "Studio" },
+    { label: "Townhouse", value: "Townhouse" },
+    { label: "Penthouse", value: "Penthouse" },
+    { label: "Duplex", value: "Duplex" },
+    { label: "Bungalow", value: "Bungalow" },
+    { label: "Cottage", value: "Cottage" },
+    { label: "Mansion", value: "Mansion" },
+    { label: "Room", value: "Room" },
   ];
-  
-  const data=[{ label: 'All', value: 'All' },
-    { label: 'Location', value: 'Location' },
-    { label: 'Price', value: 'Price' },]
 
   const handleFilter = async () => {
     try {
@@ -120,14 +119,14 @@ const Search = () => {
         </TouchableOpacity>
 
      { Category === "All" ?<TextInput
-          placeholder={t('SearchLocation')}
+          placeholder='Search for a location...'
           returnKeyType="search"
           placeholderTextColor={'gray'}
           value={filters.region}
           onChangeText={(text) => setFilters({ ...filters, region: text })}
           className='border border-gray-200 rounded-full p-2 w-72' />:
           Category==="Location" && <TextInput
-          placeholder={t('SearchLocation')}
+          placeholder='Search for a location...'
           returnKeyType="search"
           placeholderTextColor={'gray'}
           value={filters.region}
@@ -156,7 +155,7 @@ const Search = () => {
           step={500}
         />
 
-        <Text className="font-bold text-gray-500">{t("minimumPrice")} {filters.minPrice}</Text>
+        <Text className="font-bold text-gray-500">Minimum Price: {filters.minPrice}</Text>
 
         <Slider
           value={filters.maxPrice}
@@ -169,17 +168,17 @@ const Search = () => {
           step={500}
         />
 
-        <Text className="font-bold text-gray-500"> {t("maximumPrice")} {filters.maxPrice}</Text>
+        <Text className="font-bold text-gray-500"> Maximum Price: {filters.maxPrice}</Text>
         {Category === "All" && <View className=" w-full flex flex-row items-center justify-between">
           <View className="flex-1">
           <DropdownInput
             data={Categories}
             value={filters.category}
             onChange={(item) => setFilters({ ...filters, category: item.value })}
-            placeholder={t("Select category")}
+            placeholder="Select category"
             style={'border border-gray-200 rounded-full p-1 my-1 w-72'}
           />
-          <Text className="font-bold text-gray-500"> {t("Category")} : {filters.category}</Text>
+          <Text className="font-bold text-gray-500"> Catergory : {filters.category}</Text>
           </View>
           <TouchableOpacity activeOpacity={0.7} onPress={applyFilter} className={` bg-[#124BCC] items-center justify-center py-4 px-4 mx-3 rounded-md  mb-4`} >
               <Image source={icon.setting} className="size-6" tintColor={"#ffffff"}/>
@@ -210,7 +209,7 @@ const Search = () => {
           step={500}
         />
 
-        <Text className="font-bold text-gray-500">{t("minimumPrice")} {filters.minPrice}</Text>
+        <Text className="font-bold text-gray-500">Minimum Price: {filters.minPrice}</Text>
 
         <Slider
           value={filters.maxPrice}
@@ -223,18 +222,18 @@ const Search = () => {
           step={500}
         />
 
-        <Text className="font-bold text-gray-500"> {t("maximumPrice")}: {filters.maxPrice}</Text>
+        <Text className="font-bold text-gray-500"> Maximum Price: {filters.maxPrice}</Text>
         </View>}
       <View className='w-full'>
         <FlatList
           className="m-3"
-          data={data} //search by category should be present but due to bugs i commented not to forget about it      
+          data={["All", "Location","Price"]} //search by category should be present but due to bugs i commented not to forget about it      
           renderItem={({ item, index }) => {
             return (
-              <TouchableOpacity onPress={() => {setCategory(item.value)
+              <TouchableOpacity onPress={() => {setCategory(item)
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Soft)
-              }} activeOpacity={0.7} className={`${Category === item.value ? "bg-[#124BCC]" : "bg-gray-200"}  h-10 items-center justify-center px-4 mx-3 rounded-full`} >
-                <Text className={`${Category === item.value ? "text-white" : "text-black"} font-bold `}>{t(item.label)}</Text>
+              }} activeOpacity={0.7} className={`${Category === item ? "bg-[#124BCC]" : "bg-gray-200"}  h-10 items-center justify-center px-4 mx-3 rounded-full`} >
+                <Text className={`${Category === item ? "text-white" : "text-black"} font-bold `}>{item}</Text>
               </TouchableOpacity>
             )
           }}
@@ -251,7 +250,7 @@ const Search = () => {
        {loading? <View className="w-full items-center justify-center my-5 p-4">
         <View className="flex-1 items-center my-5 justify-center" />
            <ActivityIndicator size="large" color="#124BCC" />
-                <Text className="text-sm text-gray-500 mt-2">{t("Loading")}</Text>
+                <Text className="text-sm text-gray-500 mt-2">Loading...</Text>
        </View>: <FlatList
           data={filteredHomes}
           className="mx-2 bg-gray-100 h-full"
@@ -276,8 +275,8 @@ const Search = () => {
             return (
               <View className='flex flex-col items-center justify-center h-full'>
                 <View className="flex flex-row items-center justify-center h-20" />
-                <Image source={icon.result} className="size-72 my-8" tintColor={"#d1d5db"} />
-                <Text className="text-5xl font-bold text-[#d1d5db] text-center">{t("No Result Found")}</Text>
+                <Image source={icon.result} className="size-44 my-8" tintColor={"#d1d5db"} />
+                <Text className="text-5xl font-bold text-[#d1d5db]">No Result Found...</Text>
               </View>
             )
           }}

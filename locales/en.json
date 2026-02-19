@@ -22,7 +22,7 @@
     "Home":"Home",
     "RencentlyAdded":"Recently Added",
     "AvailableHouses":"Available Houses",
-    "noHomeAvailable":"No homes available",
+    "noHomeAvailable":"No result found",
     "tryAgain":"Try Again",
     "LoadingNotification":"Loading notifications...",
     "noNotification":"No Notifications Found",
@@ -134,7 +134,10 @@
      "Reload page":"Reload page",
      "No Homes Found Reload page":"No Homes Found Reload page",
      "home status change successfully":"home status change successfully",
-     "Are you sure you want to logout?":"Are you sure you want to logout?"
+     "Are you sure you want to logout?":"Are you sure you want to logout?",
+     "Please agree to our terms and conditions":"Please agree to our terms and conditions",
+     "All fields are required.":"All fields are required.",
+     "Push notifications disabled. You can enable them later in settings.":"Push notifications disabled. You can enable them later in settings."
 
 
 

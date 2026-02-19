@@ -59,7 +59,7 @@ const Cardd = ({home_cover,address,category,_id}) => {
      <View className="w-full flex-row justify-between absolute bottom-0 left-0 right-0 p-2 rounded-b-lg">
      <View>
        <Text className="text-white font-bold text-xl absolute bottom-10 ">{!loading && category}</Text>
-       <Text className="text-white text-xs absolute bottom-7 ">{!loading && address}</Text>
+       <Text className="text-white text-xs absolute bottom-7 ">{!loading && address.slice(0,20)} {address.length >20?"...":""}</Text>
        </View>
      
        <TouchableOpacity activeOpacity={0.7} className="size-5"

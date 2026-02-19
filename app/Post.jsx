@@ -23,7 +23,7 @@ const Post = () => {
   
   useEffect(() => {
     getUser();
-  }, [getUser]);
+  }, []);
   
   const [formData, setFormData] = useState({
     category: '',
