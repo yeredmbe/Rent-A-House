@@ -178,7 +178,7 @@ const handleNotificationPress = (item) => {
   }
 
   return (
-    <SafeAreaView className="bg-white h-screen">
+    <SafeAreaView className="bg-white h-full ios:min-h-screen">
       <Text className='text-2xl font-bold text-[#124BCC] text-center py-4'>Notifications</Text>
       <View className="flex-1">
         {safeNotifications.length === 0 ? (

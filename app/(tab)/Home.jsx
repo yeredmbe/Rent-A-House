@@ -59,7 +59,7 @@ const Home = () => {
   ];
 
   return (
-    <SafeAreaView className="h-screen bg-white">
+    <SafeAreaView className={`android:flex-1 h-screen bg-white`}>
       <View className='flex flex-row items-center justify-between p-4 mx-3'>
         <TouchableOpacity activeOpacity={0.7} onPress={()=>router.push("/Profile")} className={`size-10 rounded-full ${user?.image_url?"":"bg-gray-200 "}items-center justify-center`}>
           <Image source={user?.image_url?{uri:user?.image_url}:icon.userr} className={`${user?.image_url?"size-10 rounded-full":"size-6"}`} tintColor={user?.image_url?"":'#124BCC'} resizeMode='cover' />
@@ -70,7 +70,7 @@ const Home = () => {
         </TouchableOpacity>
       </View>
       
-      <View className='w-ful'>
+      <View className='w-full'>
         <Text className="text-xl font-bold text-[#124BCC] mx-5 ">{t("RencentlyAdded")}</Text>
         <FlatList
           data={recentPosted || []}

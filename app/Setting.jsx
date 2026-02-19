@@ -1,4 +1,3 @@
-import { changeLanguage } from '../Services/i18next';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -9,6 +8,7 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
+import { changeLanguage } from '../Services/i18next';
 
 const Setting = () => {
   const [modalVisible, setModalVisible] = useState(false);
@@ -31,7 +31,6 @@ const Setting = () => {
     setCurrentLanguage(language.name);
     await changeLanguage(language.code);
     setModalVisible(false);
-    console.log('Language changed to:', language.code);
   };
 
   return (

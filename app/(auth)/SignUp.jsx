@@ -2,122 +2,166 @@ import Constants from 'expo-constants';
 import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
 import { useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ActivityIndicator, Alert, Image, KeyboardAvoidingView, Platform, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import {
+    ActivityIndicator,
+    Alert,
+    Image,
+    KeyboardAvoidingView,
+    Platform,
+    ScrollView,
+    Text,
+    TouchableOpacity,
+    View
+} from 'react-native';
+
 import BouncyCheckbox from "react-native-bouncy-checkbox";
 import DropShadow from 'react-native-drop-shadow';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { showToast } from 'rn-snappy-toast';
+
 import CustomButton from '../../components/CustomButton';
 import InputField from '../../components/InputField';
 import icons from '../../constant/icons';
 import { useStore } from '../../Stores/authStore';
 
-
-
 Notifications.setNotificationHandler({
-    handleNotification: async () => ({
-        shouldPlaySound: true,
-        shouldSetBadge: true,
-        shouldShowBanner: true,
-        shouldShowList: true,
-    }),
+  handleNotification: async () => ({
+    shouldPlaySound: true,
+    shouldSetBadge: true,
+    shouldShowBanner: true,
+    shouldShowList: true,
+  }),
 });
 
+
+// 🔥 COMPULSORY NOTIFICATION PERMISSION
 const getNotificationToken = async () => {
-    if (!Device.isDevice) {
-        alert("Must use physical device for Push Notifications");
-        return null;
+  if (!Device.isDevice) {
+    Alert.alert("Error", "Push notifications require a physical device.");
+    return null;
+  }
+
+  for (let i = 0; i < 3; i++) {
+    const { status } = await Notifications.requestPermissionsAsync();
+
+    if (status === "granted") break;
+
+    await new Promise((resolve) => {
+      Alert.alert(
+        "Permission Required",
+        "You must enable notifications to continue.",
+        [{ text: "Try Again", onPress: resolve }]
+      );
+    });
+  }
+
+  const { status } = await Notifications.getPermissionsAsync();
+
+  if (status !== "granted") {
+    Alert.alert(
+      "Enable Notifications",
+      "Please enable notifications in your phone settings."
+    );
+    return null;
+  }
+
+  if(Platform.OS==="android"){
+    Notifications.setNotificationChannelAsync("default",{
+        name:"default",
+        importance:Notifications.AndroidImportance.Max,
+        vibrationPattern:[0,250,250,250]
     }
+    )
+  }
 
-    // Ask permission
-    const { status: existingStatus } = await Notifications.getPermissionsAsync();
-    let finalStatus = existingStatus;
+  const token = (
+    await Notifications.getExpoPushTokenAsync({
+      projectId: Constants.expoConfig?.extra?.eas?.projectId,
+    })
+  ).data;
 
-    if (existingStatus !== "granted") {
-        const { status } = await Notifications.requestPermissionsAsync();
-        finalStatus = status;
-    }
-
-    if (finalStatus !== "granted") {
-        alert("Permission not granted for push notifications!");
-        return null;
-    }
-
-    // Get Expo push token
-    const token = (await Notifications.getExpoPushTokenAsync({
-        projectId: Constants.expoConfig?.extra?.eas?.projectId
-    })).data;
-    console.log("Expo push token:", token);
-    return token;
-}
+  return token;
+};
 
 const SignUp = () => {
-    const { register, isLoading, isAuthenticated, getUser, user } = useStore();
-    const [check, setCheck] = useState(false)
-    const [formData, setFormData] = useState({
-        name: "",
-        email: "",
-        password: "",
-        role: "client",
-        ExpoPushToken: ""
-    })
-    const router = useRouter();
-    const {t}=useTranslation()
+  const { register, isLoading, isAuthenticated, getUser, user } = useStore();
+  const router = useRouter();
+  const { t } = useTranslation();
 
+  const [check, setCheck] = useState(false);
 
-    const handleSubmit = async () => {
-        if (isLoading) return;
-        if (!check) {
-            Alert.alert("Error", "Please agree to our terms and conditions")
-            return;
-        }
-        if (!formData.name || !formData.email || !formData.password || !formData.role) {
-            showToast({
-                message: "All fields are required.",
-                duration: 5000,
-                type: 'error',
-                position: 'top',
-                title: 'Error',
-                animationType: 'slideFromLeft',
-                progressBar: true,
-                richColors: true,
-            })
-            return;
-        }
-        const payload = { ...formData, ExpoPushToken: await getNotificationToken() }
-        await register(payload);
-        setFormData({
-            name: "",
-            email: "",
-            password: "",
-            role: "client",
-            ExpoPushToken: ""
-        })
+  const [formData, setFormData] = useState({
+    name: "",
+    email: "",
+    password: "",
+    role: "client",
+    ExpoPushToken: "",
+  });
+
+  // ✅ RUN ONLY ONCE
+  useEffect(() => {
+    getUser();
+  }, []);
+
+  // ✅ SAFE REDIRECT (NO LOOP)
+  useEffect(() => {
+    if (isAuthenticated && user && !isLoading) {
+      router.replace("/Home");
+    }
+  }, [isAuthenticated, user,isLoading]);
+
+  // 🔥 STABLE SUBMIT HANDLER
+  const handleSubmit = useCallback(async () => {
+    if (isLoading) return;
+
+    if (!check) {
+      Alert.alert("Error", "Please agree to our terms and conditions");
+      return;
     }
 
-    useEffect(() => {
-        (async () => {
-            await getUser();
-        })();
-    }, [getUser]);
-
-
-    useEffect(() => {
-        if (user) {
-            router.replace("/Home");
-        }
-    }, [user, router]);
-
-    if (isAuthenticated) {
-        return (
-            <View className="bg-white w-full h-full items-center justify-center">
-                <ActivityIndicator size="large" color="#124BCC" animating={isAuthenticated} />
-                <Text className="mt-2 ">{t("Loading")}</Text>
-            </View>
-        )
+    if (!formData.name || !formData.email || !formData.password) {
+      showToast({
+        message: "All fields are required.",
+        duration: 5000,
+        type: 'error',
+        position: 'top',
+        title: 'Error',
+      });
+      return;
     }
+
+    const token = await getNotificationToken();
+
+    if (!token) return;
+
+    const payload = {
+      ...formData,
+      ExpoPushToken: token || "ExponentPushToken[xxxxxxxx]",
+    };
+
+    await register(payload);
+
+    setFormData({
+      name: "",
+      email: "",
+      password: "",
+      role: "client",
+      ExpoPushToken: "",
+    });
+
+  }, [formData, check, isLoading]);
+
+  // ✅ SHOW LOADER ONLY WHEN LOADING
+  if (isLoading) {
+    return (
+      <View className="bg-white w-full h-full items-center justify-center">
+        <ActivityIndicator size="large" color="#124BCC" />
+        <Text className="mt-2">{t("Loading")}</Text>
+      </View>
+    );
+  }
     return (
         <SafeAreaView className="flex-1 bg-white">
             <KeyboardAvoidingView behavior="padding" className="h-full bg-white">
@@ -146,7 +190,7 @@ const SignUp = () => {
                                 <Text className={` ${formData.role === "client" ? "text-[#124BCC]" : "text-gray-400 my-1"} font-bold text-sm`}>Client</Text>
                             </DropShadow> : <View className="size-36 items-center justify-center">
                                 <Image source={icons.client} className="size-16 my-1" resizeMode='contain' tintColor={formData.role === "client" ? "#124BCC" : "#000"} />
-                                <Text className={` ${formData === "client" ? "text-[#124BCC]" : "text-gray-400 my-1"} font-bold text-sm`}>Client</Text>
+                                <Text className={` ${formData.role === "client" ? "text-[#124BCC]" : "text-gray-400 my-1"} font-bold text-sm`}>Client</Text>
                             </View>}
                         </TouchableOpacity>
 

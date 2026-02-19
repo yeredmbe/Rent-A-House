@@ -4,6 +4,7 @@ import { Alert } from 'react-native';
 import { showToast } from "rn-snappy-toast";
 import { create } from "zustand";
 import uploadToCloudinary from "../app/lib/uploadToCloudinary";
+import i18next from "../Services/i18next";
 
 
 export const homeStore = create((set,get)=>({
@@ -81,7 +82,7 @@ createHome: async (formData) => {
     
        //Success case
     showToast({
-      message: 'Property listed successfully!',
+      message: i18next.t("Property listed successfully!"),
       duration: 5000,
       type: 'success',
       position: 'top',
@@ -127,7 +128,7 @@ getAllHomes: async () => {
     
     // More robust check for homes array
     if (!data || !Array.isArray(data.homes)) {
-      Alert.alert('No Homes Found', 'Reload page');
+      Alert.alert(i18next.t("No Homes Found"), i18next.t("Reload page"));
       set({ isLoading: false, Homes: [] }); // Set empty array instead of undefined
       return;
     }
@@ -165,7 +166,7 @@ recentlyPosted: async () => {
     
     // More robust check for homes array
     if (!data || !Array.isArray(data.homes)) {
-      Alert.alert('No Homes Found', 'Reload page');
+      Alert.alert(i18next.t("No Homes Found"), i18next.t("Reload page"));
       set({ isLoading: false, recentPosted: [] }); // Set empty array instead of undefined
       return;
     }
@@ -192,7 +193,7 @@ recentlyPosted: async () => {
         )
         const data=await response.json()
         if(!data.home){
-            Alert.alert('No Homes Found','Error.')
+            Alert.alert(i18next.t("No Homes Found"),i18next.t("Error."))
         }
         // console.log(data)
         set({isLoading:false,Home:data.home})
@@ -217,7 +218,7 @@ recentlyPosted: async () => {
     //  console.log(data)
      set({isLoading:false})
     } catch(err){
-          console.log(err.message)
+          // console.log(err.message)
         // Alert.alert("Error","Failed to upload")
     }
     },
@@ -278,7 +279,7 @@ recentlyPosted: async () => {
            const data=await response.json()
            set({isLoading:false})
             showToast({
-                message: data.message,
+                message: "Success...",
                 duration: 5000,
                 type: 'success',
                 position: 'top',
@@ -309,7 +310,7 @@ isAvailable:async()=>{
           const data=await response.json()
           if(!data.homes){
              showToast({
-                message: 'No Homes Found Reload page',
+                message: i18next.t("No Homes Found Reload page"),
                 duration: 5000,
                 type: 'warning',
                 position: 'top',
@@ -341,7 +342,7 @@ isAvailable:async()=>{
         const data=await response.json()
         if(!data.homes){
             showToast({
-                message: 'No homes found reload page',
+                message: i18next.t("No homes found reload page"),
                 duration: 5000,
                 type: 'info',
                 position: 'top',
@@ -381,7 +382,6 @@ getUsersListings: async () => {
         
         // Better error handling for the response structure
         if (!data || !Array.isArray(data.userHomes)) {
-            console.log("No houses found or invalid response structure");
             set({ userHouseListing: [] });
             return;
         }
@@ -390,7 +390,7 @@ getUsersListings: async () => {
         // console.log("Houses fetched successfully:", data.userHomes.length);
         
     } catch (err) {
-        console.log("Error fetching listings:", err.message);
+        // console.log("Error fetching listings:", err.message);
         set({ userHouseListing: [] }); // Ensure it's always an array
     } finally {
         set({ userHouseLoading: false });
@@ -421,7 +421,7 @@ addReview: async (id, review) => {
       data = JSON.parse(text);
       // console.log("Parsed JSON:", data);
     } catch (err) {
-      console.error("Response was not JSON:", err.message);
+      // console.error("Response was not JSON:", err.message);
     }
   } catch (err) {
     console.log(err.message);
@@ -455,7 +455,7 @@ getHouseOnFilter: async (filters = {}) => {
             });
 
             if (!response.ok) {
-                console.log(`HTTP error! status: ${response.status}`);
+                // console.log(`HTTP error! status: ${response.status}`);
             }
 
             const data = await response.json();
@@ -468,7 +468,7 @@ getHouseOnFilter: async (filters = {}) => {
             return data;
 
         } catch (err) {
-            console.log("Error filtering houses:", err.message);
+            // console.log("Error filtering houses:", err.message);
             set({ 
                 error: err.message, 
                 loading: false,
@@ -494,7 +494,7 @@ toggleHouseAvailability: async (id) => {
 
     if(response.ok){
         showToast({
-          message: "home status change successfully",
+          message: i18next.t("home status change successfully"),
                 duration: 5000,
                 type: 'success',
                 position: 'top',
@@ -507,7 +507,7 @@ toggleHouseAvailability: async (id) => {
 
 
   }catch(err){
-    console.log(err.message)
+    // console.log(err.message)
   }
 },
 

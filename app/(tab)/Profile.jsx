@@ -15,8 +15,8 @@ import { useStore } from '../../Stores/authStore'
 
 const Profile = () => {
   const [isOpen, setISOpen] = useState(false)
-  const {user, getUser, logout, editProfile, isLoading, updateProfileImage, isProfilePicUploaded} = useStore()
-  const [image_url, setImage] = useState(user?.image_url || null);
+  const {user, getUser, logout, editProfile, isLoading, updateProfileImage, isProfilePicUploaded,userProfile} = useStore()
+  const [image_url, setImage] = useState(userProfile || user?.image_url || null);
   const [isUserLoading, setIsUserLoading] = useState(true);
   const { t } = useTranslation();
 
@@ -56,7 +56,6 @@ const pickImage = async () => {
       
       setImage(base64Image);
       await updateProfileImage(base64Image);
-      getUser();
       setISOpen(false);
 
     }
@@ -108,7 +107,7 @@ const pickImage = async () => {
   ];
 
   const handleLogout = async () => {
-        Alert.alert(t("Logout"), "Are you sure you want to logout?", [
+        Alert.alert(t("Logout"), t("Are you sure you want to logout?"), [
           { text: t("Cancel"), style: "cancel" },
           {
             text: t("Logout"),
@@ -148,7 +147,7 @@ const handleEdit = async () => {
    const  agePattern = /^(?:[1-9][0-9]?|1[01][0-9]|120)$/
     if (!agePattern.test(formData.age) || isNaN(ageNumber) || ageNumber <= 18 || ageNumber > 90 ) {
 showToast({
-              message: 'Please enter a valid age ',
+              message: t("Please enter a valid age"),
               duration: 5000,
               type: 'warning',
               position: 'top',
@@ -202,7 +201,7 @@ showToast({
   }
 
   return (
-    <SafeAreaView className="h-screen bg-white android:mb-10">
+    <SafeAreaView className="h-full bg-white android:mb-10 ios:min-h-screen">
     <ScrollView className=""
      refreshControl={
             <RefreshControl tintColor={"#124BCC"} refreshing={isLoading} onRefresh={getUser} />

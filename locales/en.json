@@ -118,7 +118,24 @@
     "Message":"Message",
     "User type":"User type",
     "ProfileOverview":"Profile Overview",
-    "Sorry we intern to keep our user's data private!":"Sorry we intern to keep our user's data private!"
+    "Sorry we intern to keep our user's data private!":"Sorry we intern to keep our user's data private!",
+    "Registration failed":"Registration failed",
+    "Registered successfully":"Registered successfully",
+    "Success":"Success",
+    "Network issues, try again later.":"Network issues, try again later.",
+    "Error":"Error",
+    "Login failed":"Login failed",
+    "Login successful":"Login successful",
+    "Please enter a valid age":"Please enter a valid age",
+     "Failed to update profile": "Failed to update profile",
+     "Profile image updated successfully":"Profile image updated successfully",
+     "Property listed successfully!":"Property listed successfully!",
+     "No Homes Found":"No Homes Found",
+     "Reload page":"Reload page",
+     "No Homes Found Reload page":"No Homes Found Reload page",
+     "home status change successfully":"home status change successfully",
+     "Are you sure you want to logout?":"Are you sure you want to logout?"
+
 
 
 } 

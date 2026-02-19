@@ -5,7 +5,10 @@ import { showToast } from 'rn-snappy-toast';
 import { io } from "socket.io-client";
 import { create } from "zustand";
 import uploadToCloudinary from "../app/lib/uploadToCloudinary";
+import i18next from '../Services/i18next';
 
+
+ 
 
 export const useStore = create((set,get) => ({
     user: null,
@@ -17,6 +20,7 @@ export const useStore = create((set,get) => ({
     isProfileLoading:false,
     userProfile:null,
     socket: null,
+    userProfile:null,
   register: async (fields) => {
     set({ isLoading: true });
     try {
@@ -32,7 +36,7 @@ export const useStore = create((set,get) => ({
             // Handle error from backend
             set({ isLoading: false });
             showToast({
-                message: data.message || "Registration failed",
+                message: i18next.t("Registration failed"),
                 duration: 5000,
                 type: 'error',
                 position: 'top',
@@ -41,7 +45,7 @@ export const useStore = create((set,get) => ({
                 progressBar: true,
                 richColors: true,
             });
-            Alert.alert("Error", data.message || "Registration failed");
+            Alert.alert(i18next.t("Error"), i18next.t("Registration failed"));
             return ;
         }
 
@@ -56,7 +60,7 @@ export const useStore = create((set,get) => ({
         }
 
         showToast({
-            message: data.message,
+            message:i18next.t("Registered successfully"),
             duration: 5000,
             type: 'success',
             position: 'top',
@@ -65,16 +69,16 @@ export const useStore = create((set,get) => ({
             progressBar: true,
             richColors: true,
         });
-        Alert.alert("Success", data.message);
+        Alert.alert(i18next.t("Success"), i18next.t("Registered successfully"));
 
          return data; // okay to return here since no success toast after
 
 
     } catch (error) {
         set({ error: error.message, isLoading: false });
-        console.log("Register error:", error.message);
+        // console.log("Register error:", error.message);
         showToast({
-            message: "Network issues, try again later.",
+            message:i18next.t("Network issues, try again later."),
             duration: 5000,
             type: 'error',
             position: 'top',
@@ -83,7 +87,7 @@ export const useStore = create((set,get) => ({
             progressBar: true,
             richColors: true,
         });
-        Alert.alert("Error", "Network issues, try again later.");
+        Alert.alert(i18next.t("Error"), i18next.t("Network issues, try again later."));
     }
 },
 
@@ -101,7 +105,7 @@ login: async (user) => {
         if (!response.ok) {
             set({ isLoading: false });
             showToast({
-                message: data.message || "Login failed",
+                message:i18next.t("Login failed"),
                 duration: 5000,
                 type: 'error',
                 position: 'top',
@@ -110,7 +114,7 @@ login: async (user) => {
                 progressBar: true,
                 richColors: true,
             });
-             Alert.alert("Error", data.message || "Login failed");
+             Alert.alert(i18next.t("Error"), i18next.t ("Login failed"));
 
             return data; // okay to return here since no success toast after
         }
@@ -122,7 +126,7 @@ login: async (user) => {
             get().connectSocket();
 
           showToast({
-                message: data.message,
+                message: i18next.t("Login successful"),
                 duration: 5000,
                 type: 'success',
                 position: 'top',
@@ -131,13 +135,13 @@ login: async (user) => {
                 progressBar: true,
                 richColors: true,
             });
-         Alert.alert("Success", data.message || "Login successful");
+         Alert.alert(i18next.t("Success"), i18next.t("Login successful"));
           
         return data;
         } else {
             set({ isLoading: false });
             showToast({
-                message: data.message || "Login failed",
+                message:i18next.t("Login failed"),
                 duration: 5000,
                 type: 'error',
                 position: 'top',
@@ -150,9 +154,9 @@ login: async (user) => {
 
     } catch (error) {
         set({ error: error.message, isLoading: false });
-        console.log("Login error:", error.message);
+       
         showToast({
-            message: "Network issues, try again later.",
+            message: i18next.t("Network issues, try again later."),
             duration: 5000,
             type: 'error',
             position: 'top',
@@ -161,9 +165,10 @@ login: async (user) => {
             progressBar: true,
             richColors: true,
         });
-        Alert.alert("Error", "Network issues, try again later.");
+        Alert.alert(i18next.t("Error"), i18next.t("Network issues, try again later."));
     }
 },
+
 
  getUser: async () => {
   set({ isLoading: true });
@@ -205,7 +210,7 @@ login: async (user) => {
     get().connectSocket();
 
   } catch (error) {
-    console.log("Error restoring user:", error.message);
+    // console.log("Error restoring user:", error.message);
 
     // Ensure clean logout state
     set({
@@ -231,7 +236,7 @@ editProfile: async (userData) => {
     set({ isLoading: true });
     if(isNaN(userData.age)) {
       showToast({
-              message: 'Please enter a valid age ',
+              message: i18next.t("Please enter a valid age"),
               duration: 5000,
               type: 'warning',
               position: 'top',
@@ -254,7 +259,7 @@ editProfile: async (userData) => {
         
         const data = await response.json();
         if (!response.ok) {
-            throw new Error(data.message || "Failed to update profile");
+            throw new Error("Failed to update profile");
         }
         
         set({ user: data.user, isLoading: false });
@@ -299,62 +304,69 @@ editProfile: async (userData) => {
     }
 },
 updateProfileImage: async (base64Image) => {
-  set({isProfilePicUploaded: true})
+  set({ isProfilePicUploaded: true });
+
   try {
     const storedToken = await AsyncStorage.getItem('token');
-    const token = storedToken?.startsWith('"') ? JSON.parse(storedToken) : storedToken;
+    const token = storedToken?.startsWith('"')
+      ? JSON.parse(storedToken)
+      : storedToken;
 
-    // First upload to Cloudinary
+    // Upload to cloudinary
     const imageUrl = await uploadToCloudinary(base64Image);
 
-    // Then send only the URL to your backend
-    const response = await fetch("https://rent-a-house-r0jt.onrender.com/api/v1/user/edit-profile", {
-      method: "PUT",
-      headers: {
-        "Authorization": `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        image_url: imageUrl.secure_url
-      }),
-    });
+    // Send URL to backend
+    const response = await fetch(
+      "https://rent-a-house-r0jt.onrender.com/api/v1/user/edit-profile",
+      {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          image_url: imageUrl.secure_url,
+        }),
+      }
+    );
+
+    const data = await response.json();
 
     if (!response.ok) {
-      const errorData = await response.text();
-     console.log("Error", `Server error: ${response.status} - ${errorData}`);
-      return;
+      throw new Error(data.message || "Update failed");
     }
 
-    // Alert.alert("Success", "Profile image updated successfully");
-    showToast({
-              message: "Profile image updated successfully",
-              duration: 5000,
-              type: 'info',
-              position: 'top',
-              title: 'Information',
-              animationType: 'slide',
-              progressBar: true,
-              richColors: true,
-            })
-    
-  } catch (err) {
-    console.log("Network error:", err.message);
-    // Alert.alert("Error", `Network error: ${err.message}`);
-     showToast({
-              message: `Network error: ${err.message}`,
-              duration: 5000,
-              type: 'error',
-              position: 'top',
-              title: 'Error',
-              animationType: 'slide',
-              progressBar: true,
-              richColors: true,
-            })
-    
-  }finally{
-    set({isProfilePicUploaded: false})
-  }
+    // ✅ SAVE NEW USER
+    await AsyncStorage.setItem("user", JSON.stringify(data.user));
 
+    // ✅ UPDATE STORE
+    set({ user: data.user });
+
+    showToast({
+      message: i18next.t("Profile image updated successfully"),
+      duration: 5000,
+      type: "success",
+      position: "top",
+      title: "Success",
+      animationType: "slide",
+      progressBar: true,
+      richColors: true,
+    });
+
+  } catch (err) {
+    showToast({
+      message: `Network error: ${err.message}`,
+      duration: 5000,
+      type: "error",
+      position: "top",
+      title: "Error",
+      animationType: "slide",
+      progressBar: true,
+      richColors: true,
+    });
+  } finally {
+    set({ isProfilePicUploaded: false });
+  }
 },
 getUserProfile:async(id)=>{
   const storedToken = await AsyncStorage.getItem('token');
@@ -408,7 +420,7 @@ getUserProfile:async(id)=>{
   disconnectSocket: () => {
     const { socket } = get();
     if (get().socket?.connected) 
-      console.log("Socket disconnected",socket?.id);
+     
       get().socket.disconnect();
       set({ socket: null })
   },

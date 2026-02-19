@@ -118,6 +118,23 @@
     "Message":"Ecrire",
     "User type":"Type d'utilisateur",
     "ProfileOverview":"Vue du Profile",
-    "Sorry we intern to keep our user's data private!":"Désolé, nous nous efforçons de garder les données de nos utilisateurs privées !"
+    "Sorry we intern to keep our user's data private!":"Désolé, nous nous efforçons de garder les données de nos utilisateurs privées !",
+    "Registration failed":"Échec de l'inscription",
+    "Registered successfully":"Inscription réussie",
+    "Success":"Succès",
+    "Network issues, try again later.":"Problème de réseau, réessayez plus tard.",
+"Error":"Erreur",
+"Login failed":"Échec de la connexion",
+"Login successful":"Connexion réussie",
+"Please enter a valid age":"Veuillez entrer un âge valide",
+"Failed to update profile":"Échec de la mise à jour du profil",
+"Profile image updated successfully":"Image de profil mise à jour avec succès",
+"Property listed successfully!":"Propriété publiée avec succès !",
+"No Homes Found":"Aucune maison trouvée",
+"Reload page":"Recharger la page",
+"No Homes Found Reload page":"Aucune maison trouvée, rechargez la page",
+"home status change successfully":"Statut du logement modifié avec succès",
+"Are you sure you want to logout?":"Voulez-vous vous deconnecté?"
+
 
 }
