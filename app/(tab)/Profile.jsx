@@ -15,84 +15,77 @@ import { useStore } from '../../Stores/authStore'
 
 const Profile = () => {
   const [isOpen, setISOpen] = useState(false)
-  const {user, getUser, logout, editProfile, isLoading, updateProfileImage, isProfilePicUploaded,userProfile} = useStore()
+  const { user, getUser, logout, editProfile, isLoading, updateProfileImage, isProfilePicUploaded, userProfile } = useStore()
   const [image_url, setImage] = useState(userProfile || user?.image_url || null);
   const [isUserLoading, setIsUserLoading] = useState(true);
   const { t } = useTranslation();
 
- 
+  const pickImage = async () => {
+    try {
+      let result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: "images",
+        allowsEditing: true,
+        aspect: [4, 3],
+        quality: 1,
+        base64: true,
+      });
 
-const pickImage = async () => {
-  try {
-    let result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: "images",
-      allowsEditing: true,
-      aspect: [4, 3],
-      quality: 1,
-      base64: true,
-    });
+      if (result.canceled) return;
 
-    if (result.canceled) return;
+      if (result.assets[0].mimeType === "video/quicktime") {
+        showToast({
+          message: 'Only pictures are allowed',
+          duration: 5000,
+          type: 'warning',
+          position: 'top',
+          title: 'Warning',
+          animationType: 'slideFromLeft',
+          progressBar: true,
+          richColors: true,
+        })
+        return;
+      }
 
-    if (result.assets[0].mimeType === "video/quicktime") {
+      if (!result.canceled) {
+        const selectedImage = result.assets[0];
+        const base64Image = `data:${selectedImage.mimeType};base64,${selectedImage.base64}`;
+        setImage(base64Image);
+        await updateProfileImage(base64Image);
+        setISOpen(false);
+      }
+    } catch (error) {
+      console.log("Error picking image:", error);
       showToast({
-              message: 'Only pictures are allowed',
-              duration: 5000,
-              type: 'warning',
-              position: 'top',
-              title: 'Warning',
-              animationType: 'slideFromLeft',
-              progressBar: true,
-              richColors: true,
-            })
-      return;
+        message: 'Failed to pick image',
+        duration: 5000,
+        type: 'error',
+        position: 'top',
+        title: 'Error',
+        animationType: 'slideFromLeft',
+        progressBar: true,
+        richColors: true,
+      })
     }
-
-    if (!result.canceled) {
-      const selectedImage = result.assets[0];
-      
-      // Create base64 string with proper format for Cloudinary
-      const base64Image = `data:${selectedImage.mimeType};base64,${selectedImage.base64}`;
-      
-      setImage(base64Image);
-      await updateProfileImage(base64Image);
-      setISOpen(false);
-
-    }
-  } catch (error) {
-    console.log("Error picking image:", error);
-     showToast({
-              message: 'Failed to pick image',
-              duration: 5000,
-              type: 'error',
-              position: 'top',
-              title: 'Error',
-              animationType: 'slideFromLeft',
-              progressBar: true,
-              richColors: true,
-            })
-  }
-};
-
+  };
 
   useEffect(() => {
-  const fetchUser = async () => {
-    setIsUserLoading(true);
-    await getUser();
-    setIsUserLoading(false);
-  };
-  
-  fetchUser();
-}, []); // ✅ Only run once
+    const fetchUser = async () => {
+      setIsUserLoading(true);
+      await getUser();
+      setIsUserLoading(false);
+    };
+    fetchUser();
+  }, []);
 
   const [formData, setFormData] = useState({
     name: user?.name || "",
     email: user?.email || "",
     location: user?.location || "",
-    age: user?.age?.toString() || "", // Convert age to string if it's a number
+    age: user?.age?.toString() || "",
   });
 
   const [isFocus, setIsFocus] = useState(false);
+
   const Region = [
     { label: 'Bafoussam', value: 'Bafoussam' },
     { label: 'Douala', value: 'Douala' },
@@ -107,90 +100,73 @@ const pickImage = async () => {
   ];
 
   const handleLogout = async () => {
-        Alert.alert(t("Logout"), t("Are you sure you want to logout?"), [
-          { text: t("Cancel"), style: "cancel" },
-          {
-            text: t("Logout"),
-            style: "destructive",
-            onPress:async () => {
-              await logout();
-             
-            },
-          },
-        ]);
-      };
-    
-  
+    Alert.alert(t("Logout"), t("Are you sure you want to logout?"), [
+      { text: t("Cancel"), style: "cancel" },
+      {
+        text: t("Logout"),
+        style: "destructive",
+        onPress: async () => {
+          await logout();
+        },
+      },
+    ]);
+  };
+
   const onShare = async () => {
     try {
-      const result = await Share.share({
-        message: 'https://faurzanext.com',
-      });
+      const result = await Share.share({ message: 'https://faurzanext.com' });
       if (result.action === Share.sharedAction) {
-        if (result.activityType) {
-          // shared with activity type of result.activityType
-        } else {
-          // shared
-        }
+        // shared
       } else if (result.action === Share.dismissedAction) {
         // dismissed
       }
     } catch (error) {
       Alert.alert(error.message);
     }
-  }; 
-  
-const handleEdit = async () => {
+  };
+
+  const handleEdit = async () => {
     const ageNumber = parseInt(formData.age);
-    
-    // Check if age is a valid number
-   const  agePattern = /^(?:[1-9][0-9]?|1[01][0-9]|120)$/
-    if (!agePattern.test(formData.age) || isNaN(ageNumber) || ageNumber <= 18 || ageNumber > 90 ) {
-showToast({
-              message: t("Please enter a valid age"),
-              duration: 5000,
-              type: 'warning',
-              position: 'top',
-              title: 'Invalid Age',
-              animationType: 'slide',
-              progressBar: true,
-              richColors: true,
-            })
-            setISOpen(false);
-        await getUser();
-        return;
+    const agePattern = /^(?:[1-9][0-9]?|1[01][0-9]|120)$/
+
+    if (!agePattern.test(formData.age) || isNaN(ageNumber) || ageNumber <= 18 || ageNumber > 90) {
+      showToast({
+        message: t("Please enter a valid age"),
+        duration: 5000,
+        type: 'warning',
+        position: 'top',
+        title: 'Invalid Age',
+        animationType: 'slide',
+        progressBar: true,
+        richColors: true,
+      })
+      setISOpen(false);
+      await getUser();
+      return;
     }
-    
+
     if (isLoading) return;
-    
+
     try {
-        await editProfile({
-            name: formData.name,
-            email: formData.email,
-            age: ageNumber,
-            location: formData.location
-        });
-        
-        await getUser();
-        console.log("Updated data:", {...formData, age: ageNumber});
-        setISOpen(!isOpen);
-        
+      await editProfile({
+        name: formData.name,
+        email: formData.email,
+        age: ageNumber,
+        location: formData.location
+      });
+      await getUser();
+      setISOpen(!isOpen);
     } catch (error) {
-        console.error("Update failed:", error);
-        // Error is already handled in the store function
+      console.error("Update failed:", error);
     }
-}
-  
-  const data = [
-    {id:1, src:icons.love, title:t("Favorite"), link:"/Favorites"},
-    {id:2, src:icons.security, title:t("Settings"), link:"/Setting"},
-    // {id:3, src:icons.payment, title:"Payment", link:"/Payment"},
-    // {id:4, src:icons.translate, title:"Language", link:"/Language"},
-    // {id:5, src:icons.help, title:"Help-Center", link:"/Help-Center"},
-    {id:6, src:icons.policy, title:t("Policies"), link:"/Policy"},
+  }
+
+  const menuItems = [
+    { id: 1, src: icons.love, title: t("Favorite"), link: "/Favorites" },
+    { id: 2, src: icons.security, title: t("Settings"), link: "/Setting" },
+    { id: 6, src: icons.policy, title: t("Policies"), link: "/Policy" },
   ];
 
-  // Show loading indicator while user data is being fetched
   if (isUserLoading) {
     return (
       <SafeAreaView className="flex-1 bg-white justify-center items-center">
@@ -200,138 +176,163 @@ showToast({
     );
   }
 
-  return (
-    <SafeAreaView className="h-full bg-white android:mb-10 ios:min-h-screen">
-    <ScrollView className=""
-     refreshControl={
-            <RefreshControl tintColor={"#124BCC"} refreshing={isLoading} onRefresh={getUser} />
-          }
+  const MenuItem = ({ src, title, link, onPress, danger }) => (
+    <TouchableOpacity
+      activeOpacity={0.7}
+      onPress={onPress ?? (() => router.push(link))}
+      className="flex-row items-center justify-between px-5 py-3 mx-2 rounded-2xl mb-1"
     >
-      <View className="flex flex-row items-center justify-between px-4 mx-3"> 
-        <TouchableOpacity activeOpacity={0.7} onPress={() => router.back()} className="size-10 rounded-full bg-gray-200 items-center justify-center">
-          <Entypo name="chevron-left" size={30} color="#124BCC" />
-        </TouchableOpacity>
-        <Text className="text-2xl font-bold text-[#124BCC]  mx-5 my-5">{t("Profile")}</Text>
-      </View>
-      
-      <View className="w-full flex flex-col items-center justify-center relative">
-        <View className={`flex size-48 rounded-full border-4 border-gray-400 items-center justify-center ${user?.image_url ? "" : "bg-gray-200"}`}>
-          <Image 
-            source={user?.image_url ? {uri: user.image_url} : icons.userr} 
-            tintColor={user?.image_url ? "" : '#124BCC'} 
-            className={`${user?.image_url ? "size-48 rounded-full" : "size-28"}`} 
-            resizeMode="cover" 
-          />
+      <View className="flex-row items-center gap-4">
+        <View className="size-10 rounded-full bg-blue-50 items-center justify-center">
+          <Image source={src} className="size-5" tintColor={danger ? "#dc2626" : "#124BCC"} />
         </View>
-        <TouchableOpacity activeOpacity={0.7} onPress={() => setISOpen(!isOpen)}>
-          <View className="flex size-11 rounded-full items-center justify-center bg-[#124BCC] bottom-9 -right-12">
-            <Image source={icons.edit} className="size-6" tintColor={"white"} />
-          </View>
-        </TouchableOpacity>
-        <Text className="text-3xl font-bold">{user?.name || "User"}</Text>
-        <Text className="text-sm text-gray-500">{user?.email || ""}</Text>
+        <Text className={`font-semibold text-base ${danger ? "text-red-600" : "text-gray-800"}`}>{title}</Text>
       </View>
-      
-      <View className="w-full px-2">
-        {data.map((item) => (
-          <TouchableOpacity activeOpacity={0.7} key={item.id} onPress={() => router.push(item.link)} className="flex flex-row items-center justify-between ml-3 mr-5 my-2">
-            <View className="flex flex-row items-center w-48">
-              <Image source={item.src} className="size-6 ml-5" tintColor={"#124BCC"} />
-              <Text className="mx-3 font-semibold">{item.title}</Text>
-            </View>
-            <Entypo name="chevron-right" size={24} color="gray" />
-          </TouchableOpacity>
-        ))}
+      <View className="size-8 rounded-full bg-gray-100 items-center justify-center">
+        <Entypo name="chevron-right" size={18} color={danger ? "#dc2626" : "gray"} />
       </View>
+    </TouchableOpacity>
+  )
 
-      <View className="w-full mt-5 px-2">
-         {user && user.role === "landLord" && (
-          <TouchableOpacity activeOpacity={0.7} onPress={() => router.push('/Listing')} className="flex flex-row items-center justify-between ml-3 mr-5 my-2">
-            <View className="flex flex-row items-center w-48">
-              <Image source={icons.blog} className="size-6 ml-5" tintColor={"#124BCC"} />
-              <Text className="mx-3 font-semibold">{t("myListings")}</Text>
-            </View>
-            <Entypo name="chevron-right" size={24} color="gray" />
+  return (
+    <SafeAreaView className="flex-1 bg-white">
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 30 }}
+        refreshControl={
+          <RefreshControl tintColor="#124BCC" refreshing={isLoading} onRefresh={getUser} />
+        }
+      >
+        {/* Header */}
+        <View className="flex-row items-center justify-between px-5 py-3">
+          <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={() => router.back()}
+            className="size-10 rounded-full bg-gray-100 items-center justify-center"
+          >
+            <Entypo name="chevron-left" size={26} color="#124BCC" />
           </TouchableOpacity>
-        )}
-        
-        {user && user.role === "landLord" && (
-          <TouchableOpacity activeOpacity={0.7} onPress={() => router.push('/Post')} className="flex flex-row items-center justify-between ml-3 mr-5 my-2">
-            <View className="flex flex-row items-center w-48">
-              <Image source={icons.add} className="size-6 ml-5" tintColor={"#124BCC"} />
-              <Text className="mx-3 font-semibold">{t("createPost")}</Text>
+          <Text className="text-xl font-bold text-[#124BCC]">{t("Profile")}</Text>
+          <View className="size-10" />
+        </View>
+
+        {/* Avatar */}
+        <View className="items-center mt-2 mb-6">
+          <View className="relative">
+            <View className={`size-32 rounded-full border-4 border-blue-100 overflow-hidden items-center justify-center ${user?.image_url ? "" : "bg-gray-100"}`}>
+              <Image
+                source={user?.image_url ? { uri: user.image_url } : icons.userr}
+                tintColor={user?.image_url ? undefined : '#124BCC'}
+                className={user?.image_url ? "size-32" : "size-16"}
+                resizeMode="cover"
+              />
             </View>
-            <Entypo name="chevron-right" size={24} color="gray" />
-          </TouchableOpacity>
-        )}
-        
-        
-        <TouchableOpacity activeOpacity={0.7} onPress={onShare} className="flex flex-row items-center justify-between ml-3 mr-5 my-2">
-          <View className="flex flex-row items-center w-48">
-            <Image source={icons.invite} className="size-6 ml-5" tintColor={"#124BCC"} />
-            <Text className="mx-3 font-semibold">{t("Invite-Friend")}</Text>
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={() => setISOpen(!isOpen)}
+              className="absolute bottom-0 right-0 size-9 rounded-full bg-[#124BCC] items-center justify-center border-2 border-white"
+            >
+              <Image source={icons.edit} className="size-4" tintColor="white" />
+            </TouchableOpacity>
           </View>
-          <Entypo name="chevron-right" size={24} color="gray" />
-        </TouchableOpacity>
-        
-        <TouchableOpacity activeOpacity={0.7} onPress={handleLogout} className="flex flex-row items-center justify-between ml-3 mr-5 mt-2 android:mb-10">
-          <View className="flex flex-row items-center w-48">
-            <Image source={icons.exit} className="size-6 ml-5" tintColor={"#dc2626"} />
-            <Text className="mx-3 font-semibold text-red-600">{t("Logout")}</Text>
-          </View>
-          <Entypo name="chevron-right" size={24} color="gray" />
-        </TouchableOpacity>
-      </View>
-      
+          <Text className="text-2xl font-bold text-gray-800 mt-4">{user?.name || "User"}</Text>
+          <Text className="text-sm text-gray-400 mt-1">{user?.email || ""}</Text>
+          {user?.location && (
+            <View className="flex-row items-center gap-1 mt-1">
+              <Entypo name="location-pin" size={14} color="gray" />
+              <Text className="text-sm text-gray-400">{user.location}</Text>
+            </View>
+          )}
+        </View>
+
+        {/* Divider */}
+        <View className="h-px bg-gray-100 mx-5 mb-4" />
+
+        {/* Menu Items */}
+        <View className="px-2">
+          {menuItems.map((item) => (
+            <MenuItem key={item.id} {...item} />
+          ))}
+
+          {user?.role === "landLord" && (
+            <>
+              <MenuItem src={icons.blog} title={t("myListings")} link="/Listing" />
+              <MenuItem src={icons.add} title={t("createPost")} link="/Post" />
+            </>
+          )}
+
+          <MenuItem src={icons.invite} title={t("Invite-Friend")} onPress={onShare} />
+
+          {/* Divider before logout */}
+          <View className="h-px bg-gray-100 mx-3 my-3" />
+
+          <MenuItem src={icons.exit} title={t("Logout")} onPress={handleLogout} danger />
+        </View>
+      </ScrollView>
+
+      {/* Edit Modal */}
       <Modal
         visible={isOpen}
         onRequestClose={() => setISOpen(!isOpen)}
-        animationType='slide'
-        presentationStyle='pageSheet'
+        animationType="slide"
+        presentationStyle="pageSheet"
       >
-        <KeyboardAvoidingView behavior="padding" className="h-full bg-white">
-          <ScrollView className="h-full">
-            <View className="my-2 p-3 w-full justify-end items-end">
+        <KeyboardAvoidingView behavior="padding" className="flex-1 bg-white">
+          <ScrollView
+            className="flex-1"
+            contentContainerStyle={{ paddingBottom: 40 }}
+            showsVerticalScrollIndicator={false}
+          >
+            {/* Modal Header */}
+            <View className="flex-row items-center justify-between px-5 py-4 border-b border-gray-100">
+              <Text className="text-lg font-bold text-[#124BCC]">{t("updateProfile")}</Text>
               <TouchableOpacity activeOpacity={0.6} onPress={() => setISOpen(!isOpen)}>
-                <Image source={icons.cancel} tintColor={"#123BCC"} className="size-7" />
+                <Image source={icons.cancel} tintColor="#123BCC" className="size-6" />
               </TouchableOpacity>
             </View>
 
-            <View className="w-full flex flex-col items-center justify-center relative">
-              <View className={`relative z-0 flex size-48 rounded-full items-center justify-center ${user?.image_url || image_url ? "" : "bg-gray-200"}`}>
-                <Image 
-                  source={image_url ? {uri: image_url} : user?.image_url ? {uri: user.image_url} : icons.userr} 
-                  tintColor={user?.image_url || image_url ? "" : '#124BCC'} 
-                  className={`${user?.image_url || image_url ? "size-48 rounded-full" : "size-28"}`} 
-                  resizeMode="cover" 
-                />
-             
-              </View>
-              <TouchableOpacity activeOpacity={0.7} onPress={pickImage}>
-                <View className="flex size-11 rounded-full items-center justify-center bg-[#124BCC] bottom-9 -right-12">
-                     {isProfilePicUploaded? <ActivityIndicator size="small" color="white" animating={isProfilePicUploaded} />:
-                     <Image source={icons.camera} className="size-6" tintColor={"white"} />}
+            {/* Avatar Picker */}
+            <View className="items-center mt-6 mb-4">
+              <View className="relative">
+                <View className={`size-32 rounded-full border-4 border-blue-100 overflow-hidden items-center justify-center ${image_url || user?.image_url ? "" : "bg-gray-100"}`}>
+                  <Image
+                    source={image_url ? { uri: image_url } : user?.image_url ? { uri: user.image_url } : icons.userr}
+                    tintColor={image_url || user?.image_url ? undefined : '#124BCC'}
+                    className={image_url || user?.image_url ? "size-32" : "size-16"}
+                    resizeMode="cover"
+                  />
                 </View>
-              </TouchableOpacity>
+                <TouchableOpacity
+                  activeOpacity={0.7}
+                  onPress={pickImage}
+                  className="absolute bottom-0 right-0 size-9 rounded-full bg-[#124BCC] items-center justify-center border-2 border-white"
+                >
+                  {isProfilePicUploaded
+                    ? <ActivityIndicator size="small" color="white" />
+                    : <Image source={icons.camera} className="size-4" tintColor="white" />
+                  }
+                </TouchableOpacity>
+              </View>
+              <Text className="text-sm text-gray-400 mt-3">{t("Tap to change photo")}</Text>
             </View>
-            
-            
-            <View className='flex items-center justify-center mt-3 mx-5'>
-              <InputField 
-                label={t("name")} 
-                placeholder="JohnDoe" 
-                value={formData.name} 
-                onTextChange={(text) => setFormData({ ...formData, name: text })}  
-                styles={"mx-2"}  
+
+            {/* Form */}
+            <View className="px-5 gap-1">
+              <InputField
+                label={t("name")}
+                placeholder="JohnDoe"
+                value={formData.name}
+                onTextChange={(text) => setFormData({ ...formData, name: text })}
+                styles="mx-2"
               />
-              <InputField 
-                label="Email" 
-                placeholder="example@gmail.com" 
-                value={formData.email} 
-                onTextChange={(text) => setFormData({ ...formData, email: text })}  
-                styles={"mx-2"}  
+              <InputField
+                label="Email"
+                placeholder="example@gmail.com"
+                value={formData.email}
+                onTextChange={(text) => setFormData({ ...formData, email: text })}
+                styles="mx-2"
               />
-              
+
               <View className="w-full mx-2">
                 <Text className="text-black font-semibold text-md my-2">Region</Text>
                 <Dropdown
@@ -355,19 +356,19 @@ showToast({
                   }}
                 />
               </View>
-              
-              <InputField 
-                label="Age" 
-                placeholder="34" 
-                value={formData.age} 
-                onTextChange={(text) => setFormData({ ...formData, age: text })} 
-                styles={"mx-2 mb-2"} 
+
+              <InputField
+                label="Age"
+                placeholder="34"
+                value={formData.age}
+                onTextChange={(text) => setFormData({ ...formData, age: text })}
+                styles="mx-2 mb-2"
                 keyboardType="numeric"
               />
-              
-              <CustomButton 
+
+              <CustomButton
                 title={t("updateProfile")}
-                containerStyles="rounded-xl my-5 py-4"
+                containerStyles="rounded-xl mt-4 py-4"
                 handlePress={handleEdit}
                 isLoading={isLoading}
               />
@@ -375,7 +376,6 @@ showToast({
           </ScrollView>
         </KeyboardAvoidingView>
       </Modal>
-      </ScrollView>
     </SafeAreaView>
   )
 }
@@ -383,10 +383,6 @@ showToast({
 export default Profile
 
 const styles = StyleSheet.create({
-  container: {
-    backgroundColor: 'white',
-    padding: 16,
-  },
   dropdown: {
     height: 50,
     width: '100%',
@@ -394,19 +390,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: 8,
     paddingHorizontal: 8,
-    marginTop: 3 
-  },
-  icon: {
-    marginRight: 5,
-  },
-  label: {
-    position: 'absolute',
-    backgroundColor: 'white',
-    left: 22,
-    top: 8,
-    zIndex: 99,
-    paddingHorizontal: 8,
-    fontSize: 14,
+    marginTop: 3
   },
   placeholderStyle: {
     fontSize: 14,

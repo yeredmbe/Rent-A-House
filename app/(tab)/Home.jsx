@@ -30,20 +30,14 @@ const Home = () => {
     }
   }
 
-  // Filter homes based on selected category
   const filteredHomes = category === "All" 
     ? (Homes || []) 
     : (categoryHome || []).filter(home => 
         home?.category === category
       )
 
-  // Generate a unique key for each item
-  // const keyExtractor = (item, index) => {
-  //   return item && item._id ? item._id.toString() : `item-${index}`
-  // }
-
-     const categories = [
-      {label:'All',value:'All'},
+  const categories = [
+    {label:'All',value:'All'},
     { label: 'House', value: 'House' },
     { label: 'Apartment', value: 'Apartment' },
     { label: 'Villa', value: 'Villa' },
@@ -56,11 +50,11 @@ const Home = () => {
     { label: "Cottage", value: "Cottage" },
     { label: "Mansion", value: "Mansion" },
     { label: "Room", value: "Room" },
-    {label:"Store", Value:"Store"}
+    {label:"Store", value:"Store"}
   ];
 
   return (
-    <SafeAreaView className={`android:flex-1 h-screen bg-white`}>
+    <SafeAreaView edges={['top']} className={`android:flex-1 h-screen bg-white`}>
       <View className='flex flex-row items-center justify-between p-4 mx-3'>
         <TouchableOpacity activeOpacity={0.7} onPress={()=>router.push("/Profile")} className={`size-10 rounded-full ${user?.image_url?"":"bg-gray-200 "}items-center justify-center`}>
           <Image source={user?.image_url?{uri:user?.image_url}:icon.userr} className={`${user?.image_url?"size-10 rounded-full":"size-6"}`} tintColor={user?.image_url?"":'#124BCC'} resizeMode='cover' />
@@ -77,7 +71,7 @@ const Home = () => {
           data={recentPosted || []}
           renderItem={({item}) => <Cardd {...item} />}
           className="mx-3 mb-1"
-          keyExtractor={(item, index) => item?._id ? item._id.toString() : `recent-${index}`} // ✅ fixed
+          keyExtractor={(item, index) => item?._id ? item._id.toString() : `recent-${index}`}
           horizontal
           showsHorizontalScrollIndicator={false}
         />
@@ -102,46 +96,47 @@ const Home = () => {
           bounces={false}
           horizontal
           showsHorizontalScrollIndicator={false}
-          keyExtractor={(item, index) => `${item}-${index}`} // ✅ fixed
+          keyExtractor={(item, index) => `${item}-${index}`}
         /> 
       </View>
 
       {isLoading && filteredHomes.length === 0 ? (
-  <SafeAreaView className="flex-1 bg-white justify-center items-center">
-    <ActivityIndicator size="large" color="#124BCC" />
-  </SafeAreaView>
-) :
-      <View className='flex-1'>
-  {filteredHomes && filteredHomes.length > 0 ? (
-    <FlatList 
-      className="mx-3 flex-1"
-      contentContainerStyle={{
-        flexGrow: 1, // Allow content to grow
-      }}
-      data={filteredHomes} 
-      renderItem={({item}) => <Card {...item} />}
-      keyExtractor={(item, index) => item?._id ? item._id.toString() : `home-${index}`}
-      showsVerticalScrollIndicator={false}
-      numColumns={2}
-      // Add these props for better scrolling
-      alwaysBounceVertical={true}
-      bounces={true}
-      columnWrapperStyle={{ justifyContent: 'space-between' }} 
-    />
-  ) : (
-    <View className="flex-1 justify-center items-center">
-      <Image source={icon.maison} className="size-36" />
-      <Text className="text-gray-500">{t("noHomeAvailable")}</Text>
-      <TouchableOpacity 
-        activeOpacity={0.7}
-        onPress={loadData}
-        className="mt-4 bg-[#124BCC] px-4 py-2 rounded-lg"
-      >
-        <Text className="text-white">{t("tryAgain")}</Text>
-      </TouchableOpacity>
-    </View>
-  )}
-</View>}
+        <View className="flex-1 bg-white justify-center items-center">
+          <ActivityIndicator size="large" color="#124BCC" />
+        </View>
+      ) : (
+        <View className='flex-1'>
+          {filteredHomes && filteredHomes.length > 0 ? (
+            <FlatList 
+              className="mx-3 flex-1"
+              contentContainerStyle={{
+                flexGrow: 1,
+                paddingBottom: 0,
+              }}
+              data={filteredHomes} 
+              renderItem={({item}) => <Card {...item} />}
+              keyExtractor={(item, index) => item?._id ? item._id.toString() : `home-${index}`}
+              showsVerticalScrollIndicator={false}
+              numColumns={2}
+              alwaysBounceVertical={true}
+              bounces={true}
+              columnWrapperStyle={{ justifyContent: 'space-between' }} 
+            />
+          ) : (
+            <View className="flex-1 justify-center items-center">
+              <Image source={icon.maison} className="size-36" />
+              <Text className="text-gray-500">{t("noHomeAvailable")}</Text>
+              <TouchableOpacity 
+                activeOpacity={0.7}
+                onPress={loadData}
+                className="mt-4 bg-[#124BCC] px-4 py-2 rounded-lg"
+              >
+                <Text className="text-white">{t("tryAgain")}</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
+      )}
     </SafeAreaView>
   )
 }
