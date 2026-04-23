@@ -11,7 +11,7 @@ import { useStore } from '../../Stores/authStore';
 
 
 const SignIn = () => {
-  const {login,isLoading,isAuthenticated,getUser,user} = useStore();
+  const {login,isLoading,isAuthenticated,user} = useStore();
   const [formData,setFormData] = useState({
     email: '',
     password: ''
@@ -42,11 +42,7 @@ const SignIn = () => {
     })
   } 
    
- useEffect(() => {
-  (async () => {
-    await getUser();
-  })();
-}, [getUser]);
+
  
    useEffect(() => {
   if (user) {

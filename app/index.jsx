@@ -7,7 +7,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useStore } from '../Stores/authStore';
 
 export default function Index() {
-  const { getUser, user,isLoading } = useStore();
+  const { user,isLoading } = useStore();
   const [currentIndex, setCurrentIndex] = useState(0);
   const scrollRef=React.useRef();
     const { t } = useTranslation()
@@ -20,12 +20,6 @@ export default function Index() {
     { id: 3, src: require("../assets/images/House-searching-pana.png") },
   ]
  
-   useEffect(()=>{
-    const getAUser=async()=>{
-  await getUser();
- }
-    getAUser();
-  },[getUser])
 
 
 

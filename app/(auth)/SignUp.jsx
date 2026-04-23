@@ -12,7 +12,8 @@ import { showToast } from 'rn-snappy-toast';
 import CustomButton from '../../components/CustomButton';
 import InputField from '../../components/InputField';
 import icons from '../../constant/icons';
-import { useStore } from '../../Stores/authStore';
+import { useStore, convex } from '../../Stores/authStore';
+import { api } from '../../convex/_generated/api';
 
 Notifications.setNotificationHandler({
     handleNotification: async () => ({
@@ -23,66 +24,25 @@ Notifications.setNotificationHandler({
     }),
 });
 
-// ✅ FIXED: Added error handling and graceful fallback
-const getNotificationToken = async () => {
-    try {
-        if (!Device.isDevice) {
-            console.log("Not a physical device - skipping push notifications");
-            return null;
-        }
 
-        // Ask permission
-        const { status: existingStatus } = await Notifications.getPermissionsAsync();
-        let finalStatus = existingStatus;
-
-        if (existingStatus !== "granted") {
-            const { status } = await Notifications.requestPermissionsAsync();
-            finalStatus = status;
-        }
-
-        if (finalStatus !== "granted") {
-            // ✅ FIXED: Use showToast instead of alert for production compatibility
-            showToast({
-                message: t("Push notifications disabled. You can enable them later in settings."),
-                duration: 3000,
-                type: 'info',
-                position: 'top',
-                title: 'Notifications'
-            });
-            return null;
-        }
-
-        // Get Expo push token
-        const token = (await Notifications.getExpoPushTokenAsync({
-            projectId: Constants.expoConfig?.extra?.eas?.projectId
-        })).data;
-        // console.log("Expo push token:", token);
-        return token;
-    } catch (error) {
-        // ✅ FIXED: Catch errors and fail gracefully
-        // console.error("Failed to get push token:", error);
-        return null;
-    }
-}
 
 const SignUp = () => {
-    const { register, isLoading, isAuthenticated, getUser, user } = useStore();
+    const { register, isLoading, isAuthenticated, user } = useStore();
     const [check, setCheck] = useState(false)
     const [formData, setFormData] = useState({
         name: "",
         email: "",
         password: "",
-        role: "client",
-        ExpoPushToken: ""
+        role: "client"
     })
     const router = useRouter();
     const { t } = useTranslation()
 
-    // ✅ FIXED: Non-blocking token request
+    // ✅ Token can be added later, skip prompting during sign up
     const handleSubmit = async () => {
         if (isLoading) return;
         
-        // ✅ FIXED: Consistent error messaging with showToast
+        // ✅ Consistent error messaging with showToast
         if (!check) {
             showToast({
                 message: t("Please agree to our terms and conditions"),
@@ -111,36 +71,57 @@ const SignUp = () => {
             return;
         }
 
-        // ✅ FIXED: Get token but don't block signup if it fails
-        let pushToken = null;
-        try {
-            pushToken = await getNotificationToken();
-        } catch (error) {
-            // console.log("Push token failed, continuing with signup:", error);
-            // Continue anyway - token can be added later
-        }
-
         const payload = {
-            ...formData,
-            ExpoPushToken: pushToken || "" // Empty string if token fails
+            ...formData
         };
 
-        await register(payload);
+        const res = await register(payload);
+        
+        if (res && res.user && res.user._id) {
+            await registerForPushNotificationsAsync(res.user._id);
+        }
+
         setFormData({
             name: "",
             email: "",
             password: "",
-            role: "client",
-            ExpoPushToken: ""
+            role: "client"
         })
     }
 
-    useEffect(() => {
-        (async () => {
-            await getUser();
-        })();
-    }, [getUser]);
+    async function registerForPushNotificationsAsync(userId) {
+        if (Platform.OS === 'android') {
+            await Notifications.setNotificationChannelAsync('default', {
+                name: 'default',
+                importance: Notifications.AndroidImportance.MAX,
+                vibrationPattern: [0, 250, 250, 250],
+                lightColor: '#FF231F7C',
+            });
+        }
 
+        if (Device.isDevice) {
+            const { status: existingStatus } = await Notifications.getPermissionsAsync();
+            let finalStatus = existingStatus;
+            if (existingStatus !== 'granted') {
+                const { status } = await Notifications.requestPermissionsAsync();
+                finalStatus = status;
+            }
+            if (finalStatus !== 'granted') {
+                return;
+            }
+            try {
+                const projectId =
+                  Constants?.expoConfig?.extra?.eas?.projectId ?? Constants?.easConfig?.projectId;
+                if (!projectId) {
+                  throw new Error('Project ID not found');
+                }
+                const token = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
+                await convex.mutation(api.users.updatePushToken, { userId, token });
+            } catch (e) {
+                console.log(e);
+            }
+        }
+    }
 
     useEffect(() => {
         if (user) {

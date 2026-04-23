@@ -8,12 +8,8 @@ import image from '../constant/image'
 import { useStore } from '../Stores/authStore'
 
 const Policy = () => {
-  const { user, getUser } = useStore();
+  const { user } = useStore();
   const { t } = useTranslation()
-
-  useEffect(() => {
-    getUser();
-  }, []);
 
   const data = [{
     icon: image.house,

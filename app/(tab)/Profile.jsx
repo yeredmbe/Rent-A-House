@@ -11,13 +11,13 @@ import CustomButton from '../../components/CustomButton'
 import InputField from '../../components/InputField'
 import icons from '../../constant/icons'
 import { useStore } from '../../Stores/authStore'
+import uploadToCloudinary from '../lib/uploadToCloudinary';
 
 
 const Profile = () => {
   const [isOpen, setISOpen] = useState(false)
-  const { user, getUser, logout, editProfile, isLoading, updateProfileImage, isProfilePicUploaded, userProfile } = useStore()
+  const { user, logout, editProfile, isLoading, updateProfileImage, isProfilePicUploaded, userProfile } = useStore()
   const [image_url, setImage] = useState(userProfile || user?.image_url || null);
-  const [isUserLoading, setIsUserLoading] = useState(true);
   const { t } = useTranslation();
 
   const pickImage = async () => {
@@ -49,8 +49,41 @@ const Profile = () => {
       if (!result.canceled) {
         const selectedImage = result.assets[0];
         const base64Image = `data:${selectedImage.mimeType};base64,${selectedImage.base64}`;
+        
+        // Temporarily set local image so UI updates immediately
         setImage(base64Image);
-        await updateProfileImage(base64Image);
+        
+        try {
+          const cloudinaryResponse = await uploadToCloudinary(base64Image);
+          if (cloudinaryResponse && cloudinaryResponse.secure_url) {
+            await updateProfileImage(cloudinaryResponse.secure_url);
+            setImage(cloudinaryResponse.secure_url);
+          } else {
+             showToast({
+              message: 'Failed to upload to Cloudinary',
+              duration: 5000,
+              type: 'error',
+              position: 'top',
+              title: 'Error',
+              animationType: 'slideFromLeft',
+              progressBar: true,
+              richColors: true,
+            });
+          }
+        } catch (uploadError) {
+          console.error("Cloudinary error:", uploadError);
+          showToast({
+            message: 'Failed to upload image',
+            duration: 5000,
+            type: 'error',
+            position: 'top',
+            title: 'Error',
+            animationType: 'slideFromLeft',
+            progressBar: true,
+            richColors: true,
+          });
+        }
+        
         setISOpen(false);
       }
     } catch (error) {
@@ -68,14 +101,6 @@ const Profile = () => {
     }
   };
 
-  useEffect(() => {
-    const fetchUser = async () => {
-      setIsUserLoading(true);
-      await getUser();
-      setIsUserLoading(false);
-    };
-    fetchUser();
-  }, []);
 
   const [formData, setFormData] = useState({
     name: user?.name || "",
@@ -141,7 +166,6 @@ const Profile = () => {
         richColors: true,
       })
       setISOpen(false);
-      await getUser();
       return;
     }
 
@@ -154,7 +178,6 @@ const Profile = () => {
         age: ageNumber,
         location: formData.location
       });
-      await getUser();
       setISOpen(!isOpen);
     } catch (error) {
       console.error("Update failed:", error);
@@ -167,14 +190,6 @@ const Profile = () => {
     { id: 6, src: icons.policy, title: t("Policies"), link: "/Policy" },
   ];
 
-  if (isUserLoading) {
-    return (
-      <SafeAreaView className="flex-1 bg-white justify-center items-center">
-        <ActivityIndicator size="large" color="#124BCC" />
-        <Text className="text-sm text-gray-500 mt-2">{t("Loading")}</Text>
-      </SafeAreaView>
-    );
-  }
 
   const MenuItem = ({ src, title, link, onPress, danger }) => (
     <TouchableOpacity
@@ -200,7 +215,7 @@ const Profile = () => {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 30 }}
         refreshControl={
-          <RefreshControl tintColor="#124BCC" refreshing={isLoading} onRefresh={getUser} />
+          <RefreshControl tintColor="#124BCC" refreshing={isLoading} onRefresh={() => {}} />
         }
       >
         {/* Header */}

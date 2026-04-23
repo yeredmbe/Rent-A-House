@@ -11,13 +11,9 @@ import { useStore } from '../Stores/authStore';
 
 const Cardd = ({home_cover,address,category,_id}) => {
 
-   const {user,getUser}=useStore()
+   const {user}=useStore()
     const [loading,setLoading]=useState(true)
     const [isLoading,setIsLoading]=useState(false)
-  
-    useEffect(()=>{
-      getUser()
-    },[])
 
    const addToFavorite=async(id)=>{
                   const storedToken = await AsyncStorage.getItem('token');

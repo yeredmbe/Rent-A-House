@@ -9,6 +9,10 @@ import { showToast } from 'rn-snappy-toast';
 import { useStore } from '../../Stores/authStore';
 import { messageStore } from '../../Stores/messageStore';
 import icon from '../../constant/icons';
+import { useQuery, useMutation } from "convex/react";
+import { api } from "../../convex/_generated/api";
+import { useCachedQuery } from '../../hooks/useCachedQuery';
+import uploadToCloudinary from '../lib/uploadToCloudinary';
 
 
 const Message = () => {
@@ -17,18 +21,18 @@ const Message = () => {
         image_url: ''
     });
     const [pendingMessages, setPendingMessages] = useState([]);
-    const { getMessages, messages, sendMessage, subscribeToMessages, unsuscribeToMessages, selectedUser } = messageStore()
-    const { user, getUser } = useStore()
+    const { selectedUser } = messageStore()
+    const { user } = useStore()
     const { message } = useLocalSearchParams()
     const scrollRef = useRef();
     const { t } = useTranslation()
 
-    useEffect(() => {
-        if (message !== selectedUser._id) return;
-        getMessages(message)
-        subscribeToMessages()
-        return () => unsuscribeToMessages()
-    }, [message, subscribeToMessages, unsuscribeToMessages, getMessages, selectedUser])
+    // ✅ Reactively fetch messages
+    const messages = useCachedQuery(api.messages.getMessages, 
+        (user?._id && message) ? { userA: user._id, userB: message } : "skip",
+        `cache_messages_${user?._id}_${message}`
+    ) ?? [];
+    const sendMessageMutation = useMutation(api.messages.sendMessage);
 
     // Remove pending messages only when their content is confirmed in the real messages list
     useEffect(() => {
@@ -47,7 +51,7 @@ const Message = () => {
     }, [messages]);
 
     useEffect(() => {
-        getUser()
+        // User is loaded via layout or app level, but ensuring it's available
     }, [])
 
     // Auto-scroll whenever messages or pendingMessages change
@@ -108,20 +112,54 @@ const Message = () => {
             ...(messagez.image_url && { image_url: messagez.image_url })
         };
 
-        // Immediately show the message in the chat (optimistic UI)
-        const optimisticMsg = {
-            _id: `pending-${Date.now()}`,
-            senderId: { _id: user._id, name: user.name },
-            text: cleanMessage.text || "",
-            image_url: cleanMessage.image_url || "",
-            createdAt: new Date().toISOString(),
-            pending: true,
-        };
-
-        setPendingMessages(prev => [...prev, optimisticMsg]);
-        setMessage({ text: "", image_url: "" }); // Clear input immediately
-        sendMessage(message, cleanMessage);       // Send in background
+    // Immediately show the message in the chat (optimistic UI)
+    const optimisticMsg = {
+        _id: `pending-${Date.now()}`,
+        senderId: { _id: user._id, name: user.name },
+        text: cleanMessage.text || "",
+        image_url: cleanMessage.image_url || "",
+        createdAt: new Date().toISOString(),
+        pending: true,
     };
+
+    setPendingMessages(prev => [...prev, optimisticMsg]);
+    setMessage({ text: "", image_url: "" }); // Clear input immediately
+    
+    // Process image upload asynchronously if needed
+    const processMessage = async () => {
+        let finalImageUrl = cleanMessage.image_url;
+        
+        try {
+            if (finalImageUrl && finalImageUrl.startsWith("data:image")) {
+                const uploadRes = await uploadToCloudinary(finalImageUrl);
+                finalImageUrl = uploadRes.secure_url;
+            }
+            
+            await sendMessageMutation({
+                senderId: user._id,
+                receiverId: message,
+                text: cleanMessage.text,
+                image_url: finalImageUrl
+            });
+        } catch (err) {
+            console.error("Send message error:", err);
+            // Remove optimistic message on failure
+            setPendingMessages(prev => prev.filter(msg => msg._id !== optimisticMsg._id));
+            showToast({
+                message: 'Failed to send message',
+                duration: 5000,
+                type: 'error',
+                position: 'top',
+                title: 'Error',
+                animationType: 'slide',
+                progressBar: true,
+                richColors: true,
+            });
+        }
+    };
+    
+    processMessage();
+};
 
 
     const removeImage = () => {
@@ -180,7 +218,7 @@ const Message = () => {
                                 </Text>
                             )}
                             <Text className={`${msg.senderId._id === user._id ? "text-right" : "text-left"} text-xs text-gray-400`}>
-                                {msg.pending ? "⏱ Sending..." : new Date(msg.createdAt).toLocaleString()}
+                                {msg.pending ? "⏱ Sending..." : new Date(msg._creationTime || msg.createdAt).toLocaleString()}
                             </Text>
                         </View>
                     ))}

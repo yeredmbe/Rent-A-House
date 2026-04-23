@@ -12,18 +12,15 @@ import DropdownInput from "../components/SelectInput";
 import icon from '../constant/icons';
 import { useStore } from '../Stores/authStore';
 import { homeStore } from '../Stores/homeStore';
+import uploadToCloudinary from './lib/uploadToCloudinary';
 
 
 const Post = () => {
   const [selectedCountry, setSelectedCountry] = useState(null);
   const { createHome} = homeStore();
   const [loading, setLoading] = useState(false);
-  const { user, getUser } = useStore(); // Get token directly from useStore
+  const { user } = useStore(); // Get token directly from useStore
   const { t } = useTranslation();
-  
-  useEffect(() => {
-    getUser();
-  }, []);
   
   const [formData, setFormData] = useState({
     category: '',
@@ -221,7 +218,34 @@ const Post = () => {
 
   try {
     setLoading(true);
-    await createHome(formData);
+    let uploadedCover = formData.home_cover;
+    let uploadedDetails = [...formData.details];
+
+    // Upload cover image if it's a base64 string
+    if (uploadedCover && uploadedCover.startsWith("data:image")) {
+      const coverRes = await uploadToCloudinary(uploadedCover);
+      uploadedCover = coverRes.secure_url;
+    }
+
+    // Upload detail images if they are base64 strings
+    uploadedDetails = await Promise.all(
+      uploadedDetails.map(async (detailStr) => {
+        if (detailStr && detailStr.startsWith("data:image")) {
+          const detailRes = await uploadToCloudinary(detailStr);
+          return detailRes.secure_url;
+        }
+        return detailStr;
+      })
+    );
+
+    // Swap local base64 with remote URLs
+    const finalData = {
+      ...formData,
+      home_cover: uploadedCover,
+      details: uploadedDetails
+    };
+
+    await createHome(finalData);
     
   } catch (error) {
     showToast({

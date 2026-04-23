@@ -14,10 +14,7 @@ import { useStore } from '../Stores/authStore';
 const Card = ({home_cover,category,address,price,_id}) => {
    const [loading,setLoading]=useState(true)
     const [isLoading,setIsLoading]=useState(false)
-      const {user,getUser}=useStore()
-useEffect(()=>{
-    getUser()
-},[])
+      const {user}=useStore()
 
 const { width } = Dimensions.get('window');
 const cardWidth = (width - 48) / 2;

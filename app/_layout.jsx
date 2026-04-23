@@ -9,16 +9,22 @@ import NotificationProvider from '../components/notificationProvider';
 import '../global.css';
 import { initLanguage } from '../Services/i18next';
 
+
 SplashScreen.preventAutoHideAsync();
+
+import { ConvexProvider } from 'convex/react';
+import { convex, useStore } from '../Stores/authStore';
 
 // Create a separate component that uses the PostHog hook
 function AppContent() {
   const posthog = usePostHog();
+  const { restoreSession } = useStore();
 
   useEffect(() => {
+    restoreSession();
     // Test event
     posthog.capture('App Started', { screen: 'Root Layout' });
-  }, [posthog]);
+  }, [posthog, restoreSession]);
 
   return (
     <NotificationProvider>
@@ -64,9 +70,9 @@ export default function RootLayout() {
   }
 
   return (
-    <>
-      <PostHogProvider 
-        apiKey="phc_6GfkVrOJxcOTkW6cN3MMveTUC74pBZCzMQkaBE2pAGS" 
+    <ConvexProvider client={convex}>
+      <PostHogProvider
+        apiKey="phc_6GfkVrOJxcOTkW6cN3MMveTUC74pBZCzMQkaBE2pAGS"
         options={{
           host: 'https://eu.i.posthog.com',
           enableSessionReplayRecording: true,
@@ -85,6 +91,6 @@ export default function RootLayout() {
       >
         <AppContent />
       </PostHogProvider>
-    </>
+    </ConvexProvider>
   );
 }

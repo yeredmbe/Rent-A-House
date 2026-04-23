@@ -8,8 +8,10 @@ import { showToast } from 'rn-snappy-toast';
 import icons from '../../constant/icons';
 import image from '../../constant/image';
 import { useStore } from '../../Stores/authStore';
-import { homeStore } from '../../Stores/homeStore';
 import { messageStore } from '../../Stores/messageStore';
+import { useQuery, useMutation } from "convex/react";
+import { api } from "../../convex/_generated/api";
+import { useCachedQuery } from '../../hooks/useCachedQuery';
 
 
 
@@ -73,33 +75,27 @@ const DetailPage = () => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [loading, setLoading] = useState(true)
   const [isLoaded, setIsLoading] = useState(false)
-  const { Home, getHomeById, isLoading, addReview } = homeStore();
-  const {setSelectedUser}=messageStore()
   const { detail } = useLocalSearchParams();
-  const { user, getUser } = useStore();
+  const { user } = useStore();
+  
+  const Home = useCachedQuery(api.homes.getHome, { homeId: detail }, `cache_home_detail_${detail}`);
+  const isLoading = Home === undefined;
+  const addReviewMutation = useMutation(api.homes.addReview);
+  const toggleFavMutation = useMutation(api.homes.toggleFavorite);
+
+  const { setSelectedUser } = messageStore()
   const [isOpen, setIsOpen] = useState(false)
   const [text, setText]=useState("")
   const [isClicked,setIsClicked]=useState(false)
 
-
-  useEffect(() => {
-    getHomeById(detail);
-  }, [detail]);
-
-  // whatsapp url 
-  useEffect(() => {
-    getUser();
-  }, []);
-  
   const handleSendMessage = async () => {
     if(!text.trim() || text==="") return
     setIsClicked(true)
     if(isClicked) return
-   await addReview(Home?._id,{text});
+   await addReviewMutation({ homeId: Home?._id, userId: user?._id, text });
    setText("")
    setIsOpen(!isOpen)
    setIsClicked(false)
-  
   }
 
   const checkUser = () => {
@@ -109,21 +105,12 @@ const DetailPage = () => {
   }
 
   const addToFavorite = async (id) => {
-    const storedToken = await AsyncStorage.getItem('token');
-    const token = storedToken?.startsWith('"') ? JSON.parse(storedToken) : storedToken;
     setIsLoading(true)
     try {
-      const response = await fetch(`https://rent-a-house-r0jt.onrender.com/api/v1/home/favorite/${id}`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
-        }
-      })
-      const data = await response.json()
+      const res = await toggleFavMutation({ homeId: id, userId: user?._id });
       setIsLoading(false)
       showToast({
-        message: data.message,
+        message: res.action === "added" ? "Added to favorites" : "Removed from favorites",
         duration: 5000,
         type: 'success',
         position: 'top',
@@ -134,8 +121,8 @@ const DetailPage = () => {
       })
     }
     catch (err) {
+      setIsLoading(false)
       console.log(err.message)
-      // Alert.alert("Error","Failed to upload")
     }
   }
 
@@ -302,7 +289,7 @@ const DetailPage = () => {
                     <Text className="text-md text-gray-500">{item?.text}</Text>
                     <View className="flex flex-row items-center justify-start ">
                       <Text className="text-gray-500 font-bold text-sm mr-3">{item?.userId?.name}</Text>
-                      <Text className="text-gray-500 text-sm">{formatRelativeTime(item?.createdAt)}</Text>
+                      <Text className="text-gray-500 text-sm">{formatRelativeTime(item?._creationTime)}</Text>
                     </View>
                   </View>
                 </TouchableOpacity>

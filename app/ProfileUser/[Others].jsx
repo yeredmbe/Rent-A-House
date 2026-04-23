@@ -6,23 +6,15 @@ import { Image, ScrollView, Text, TouchableOpacity, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useStore } from '../../Stores/authStore'
 import icons from '../../constant/icons'
+import { useQuery } from "convex/react"
+import { api } from "../../convex/_generated/api"
 
 
 const Others = () => {
-  const { isLoadProfile, userProfile, getUserProfile } = useStore()
   const { Others } = useLocalSearchParams()
   const { t } = useTranslation()
 
-  const fetchUserProfile = async () => {
-    try {
-      await getUserProfile(Others)
-    } catch (error) {
-      console.log(error)
-    }
-  }
-  useEffect(() => {
-    fetchUserProfile()
-  }, [])
+  const userProfile = useQuery(api.users.getUserProfile, Others ? { userId: Others } : "skip");
 
 
   return (

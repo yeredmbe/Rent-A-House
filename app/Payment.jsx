@@ -23,11 +23,7 @@ function formatNumber(number) {
     return formattedInteger;
 }
 const Payment = () => {
-  const { user, getUser } = useStore();
-
-  useEffect(() => {
-    getUser();
-  }, []);
+  const { user } = useStore();
 
   const data = [{
     plan: user.role === "client" ? "8000" : "10000",

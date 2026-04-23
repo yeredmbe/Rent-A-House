@@ -5,7 +5,8 @@ import { useTranslation } from "react-i18next";
 import { Image, Text, View } from "react-native";
 import Icons from "../../constant/icons";
 import { useStore } from "../../Stores/authStore";
-import { notificationStore } from "../../Stores/notificationStore";
+import { useQuery } from "convex/react";
+import { api } from "../../convex/_generated/api";
 
 
 // ✅ Memoized TabBarIcon so it won't re-render unless props change
@@ -23,27 +24,12 @@ const TabBarIcon =(({ color, label, icons }) => {
 
 const TabLayout = () => {
    const { t } = useTranslation();
-  const { user, getUser } = useStore();
-  const { getNotificationCount, notificationCount } = notificationStore();
-
-  // ✅ Load user
-  useEffect(() => {
-    const fetchUser = async () => {
-      await getUser();
-    };
-    fetchUser();
-  }, [getUser]);
-
-  // ✅ Fetch notification count whenever user changes
-  const fetchNotificationCount = useCallback(() => {
-    if (user?._id) {
-      getNotificationCount(user._id);
-    }
-  }, [user?._id]);
-
-  useEffect(() => {
-    fetchNotificationCount();
-  }, [fetchNotificationCount]);
+  const { user } = useStore();
+  // ✅ Fetch notification count reactively using Convex
+  const notificationCount = useQuery(
+    api.notifications.countUnread,
+    user?._id ? { userId: user._id } : "skip"
+  ) ?? 0;
 
   return (
     <>

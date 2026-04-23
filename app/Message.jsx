@@ -6,16 +6,22 @@ import { FlatList, Image, Text, TouchableOpacity, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import icons from '../constant/icons'
 import { messageStore } from '../Stores/messageStore'
+import { useStore } from '../Stores/authStore'
+import { useMutation } from "convex/react"
+import { api } from "../convex/_generated/api"
+import { useCachedQuery } from '../hooks/useCachedQuery';
 
 const Message = () => {
-  const { getChatUsers, chatUsers, setSelectedUser, toggleReadMessages } = messageStore()
+  const { setSelectedUser } = messageStore()
+  const { user } = useStore()
+  
+  const chatUsers = useCachedQuery(api.messages.getChatUsers, user?._id ? { userId: user._id } : "skip", `cache_chat_users_${user?._id}`) ?? [];
+  const markAsRead = useMutation(api.messages.markMessagesAsRead);
   const { t } = useTranslation()
 
-  useEffect(() => {
-    getChatUsers()
-  }, [])
 
-  const unreadCount = chatUsers?.filter(u => !u.isRead).length ?? 0
+
+  const unreadCount = useCachedQuery(api.messages.countUnreadMessages, user?._id ? { userId: user._id } : "skip", `cache_unread_count_${user?._id}`) ?? 0;
 
   return (
     <SafeAreaView className="flex-1 bg-white">
@@ -44,17 +50,19 @@ const Message = () => {
         keyExtractor={(item) => item._id.toString()}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ flexGrow: 1, paddingVertical: 12, paddingHorizontal: 12 }}
-        onRefresh={getChatUsers}
+        onRefresh={() => {}}
         refreshing={false}
         renderItem={({ item }) => (
           <TouchableOpacity
             activeOpacity={0.7}
             onPress={() => {
               setSelectedUser(item)
-              toggleReadMessages(item._id)
+              if (user?._id) {
+                markAsRead({ senderId: item._id, receiverId: user._id }).catch(console.error);
+              }
               router.push(`/Message/${item._id}`)
             }}
-            className={`flex-row items-center rounded-2xl mb-3 p-3 ${item.isRead ? "bg-white" : "bg-indigo-50"}`}
+            className={`flex-row items-center rounded-2xl mb-3 p-3 bg-white`}
             style={{ elevation: 1, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 4, shadowOffset: { width: 0, height: 1 } }}
           >
             {/* Avatar */}
@@ -74,16 +82,14 @@ const Message = () => {
                   {item.name}
                 </Text>
                 <Text className="text-xs text-gray-400">
-                  {new Date(item.createdAt).toDateString()}
+                  {new Date(item._creationTime || item.createdAt || Date.now()).toDateString()}
                 </Text>
               </View>
               <View className="flex-row items-center justify-between mt-0.5">
                 <Text className="text-sm text-gray-500" numberOfLines={1}>
                   {t("newMessage")} {item.role === "landLord" ? t("LandLord") : "Client"}.
                 </Text>
-                {!item.isRead && (
-                  <View className="size-2.5 rounded-full bg-[#124BCC] ml-2 shrink-0" />
-                )}
+
               </View>
               <View className="mt-1">
                 <View className="self-start bg-blue-50 rounded-full px-2 py-0.5">

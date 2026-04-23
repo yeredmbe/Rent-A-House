@@ -8,30 +8,27 @@ import Card from '../../components/Card'
 import Cardd from '../../components/Cardd'
 import icon from '../../constant/icons'
 import { useStore } from '../../Stores/authStore'
-import { homeStore } from '../../Stores/homeStore'
+import { useCachedQuery } from '../../hooks/useCachedQuery';
+import { api } from "../../convex/_generated/api"
 
 const Home = () => {
-  const { user, getUser } = useStore()
-  const { Homes, isLoading, getAllHomes, recentlyPosted, recentPosted,getByCategory,categoryHome } = homeStore()
+  const { user } = useStore()
   const [refreshing, setRefreshing] = useState(false)
   const [category, setCategory] = useState("All")
   const { t } = useTranslation()
 
-  useEffect(() => {
-    getUser()
-    loadData()
-  }, [])
+  const HomesData = useCachedQuery(api.homes.getAvailableHomes, undefined, "cache_homes_available");
+  const recentPosted = useCachedQuery(api.homes.recentlyPosted, undefined, "cache_homes_recent");
+  const categoryHome = useCachedQuery(api.homes.getByCategory, category !== "All" ? { category } : "skip", `cache_homes_category_${category}`);
+
+  const isLoading = HomesData === undefined || recentPosted === undefined;
 
   const loadData = async () => {
-    try {
-      await Promise.all([getAllHomes(), recentlyPosted()])
-    } catch (error) {
-      console.error('Failed to load data:', error)
-    }
+    // Convex is reactive.
   }
 
   const filteredHomes = category === "All" 
-    ? (Homes || []) 
+    ? (HomesData || []) 
     : (categoryHome || []).filter(home => 
         home?.category === category
       )
@@ -85,7 +82,6 @@ const Home = () => {
           renderItem={({item, index}) => (
             <TouchableOpacity 
               onPress={()=>{setCategory(item.value); 
-                getByCategory(item.value)
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Soft) }} 
               activeOpacity={0.7} 
               className={`${category===item.value ? "bg-[#124BCC]" : "bg-gray-200"} h-10 items-center justify-center px-4 mx-3 rounded-full`}

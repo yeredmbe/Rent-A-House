@@ -8,7 +8,9 @@ import { showToast } from 'rn-snappy-toast'
 import { default as icon, default as icons } from '../constant/icons'
 import image from '../constant/image'
 import { useStore } from '../Stores/authStore'
-import { homeStore } from '../Stores/homeStore'
+import { useQuery, useMutation } from "convex/react"
+import { api } from "../convex/_generated/api"
+import { useCachedQuery } from '../hooks/useCachedQuery';
 function formatNumber(number) {
     // Convert to string and split into integer and decimal parts
     const numStr = Number(number).toString();
@@ -28,33 +30,19 @@ function formatNumber(number) {
 }
 
 const Listing = () => {
-  const { user, getUser } = useStore()
-  const { userHouseLoading, getUsersListings, userHouseListing } = homeStore()
+  const { user } = useStore()
   const [refreshing, setRefreshing] = useState(false)
- const [isLoading, setLoading]=useState(true)
-const [availability, setAvailability] = useState({}); 
-const { t } = useTranslation()
+  const [availability, setAvailability] = useState({}); 
+  const { t } = useTranslation()
 
-const toggleHouseAvailability = async (id) => {
-  try {
-    const storedToken = await AsyncStorage.getItem('token');
-    const token = storedToken.startsWith('"') ? JSON.parse(storedToken) : storedToken;
+  const listings = useCachedQuery(api.homes.getUserHomes, user?._id ? { userId: user._id } : "skip", `cache_user_listings_${user?._id}`) ?? [];
+  const userHouseLoading = listings === undefined && user?._id !== undefined;
+  const toggleAvailMutation = useMutation(api.homes.toggleAvailability);
 
-    const response = await fetch(
-      `https://rent-a-house-r0jt.onrender.com/api/v1/home/edit-availability/${id}`,
-      {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
-        }
-      }
-    );
-    const data = await response.json();
-    // console.log(data);
+  const toggleHouseAvailability = async (id) => {
+    try {
+      await toggleAvailMutation({ homeId: id, userId: user._id });
 
-    if (response.ok) {
-      // Update local state
       setAvailability((prev) => ({
         ...prev,
         [id]: !prev[id]
@@ -70,56 +58,31 @@ const toggleHouseAvailability = async (id) => {
         progressBar: true,
         richColors: true,
       });
+
+    } catch (err) {
+      console.log(err.message);
     }
-
-  } catch (err) {
-    console.log(err.message);
-  }
-};
-
-  useEffect(() => {
-    const fetchUser = async () => {
-      await getUser()
-    }
-    fetchUser()
-  }, [])
-
-  useEffect(() => {
-    getUsersListings()
-  }, [])
+  };
 
   const onRefresh = async () => {
     setRefreshing(true)
-    await getUsersListings()
-    setRefreshing(false)
+    setTimeout(() => setRefreshing(false), 500)
   }
 
   const DebugInfo = (listings ) => {
-//   console.log('Listings data:', listings)
-//   console.log('Listings count:', listings?.length)
-  
-//   if (listings.length > 0) {
-//     console.log('First listing:', listings[0])
-//     console.log('First listing image URL:', listings[0]?.home_cover)
-//   }
-  
   return null
 }
 
-
-  // Safe access to userHouseListing
-  const listings = Array.isArray(userHouseListing) ? userHouseListing : []
-DebugInfo(listings)
+  DebugInfo(listings)
   const renderListingItem = ({ item }) => (
     <TouchableOpacity
       className="mb-4 rounded-lg border border-gray-200 overflow-hidden "
       onPress={() => router.push(`/House/${item._id}`)}
     >
       <Image
-        source={isLoading?image.load : { uri: item.home_cover }}
+        source={{ uri: item.home_cover }}
         className="w-full h-36"
         resizeMode="cover"
-        onLoadEnd={() => setLoading(false)}
         onError={(e) => console.log('Image load error:', e.nativeEvent.error)}
       />
       <View className="flex flex-row items-center justify-between p-4 bg-white">

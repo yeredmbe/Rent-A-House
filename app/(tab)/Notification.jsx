@@ -7,6 +7,8 @@ import icons from '../../constant/icons'
 import { useStore } from '../../Stores/authStore'
 import { messageStore } from '../../Stores/messageStore'
 import { notificationStore } from '../../Stores/notificationStore'
+import { useQuery } from "convex/react"
+import { api } from "../../convex/_generated/api"
 
 function formatRelativeTime(dateString) {
   if (!dateString) return 'Unknown time';
@@ -34,37 +36,23 @@ function formatRelativeTime(dateString) {
 }
 
 const Notification = () => {
-  const { user, getUser } = useStore()
-  const { getNotification, notifications, markAsRead, isLoading } = notificationStore()
+  const { user } = useStore()
+  const { markAsRead, isLoading: storeLoading } = notificationStore()
   const { setSelectedUser } = messageStore()
   const [refreshing, setRefreshing] = useState(false)
   const { t } = useTranslation()
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        await getUser()
-        if (user?._id) {
-          await getNotification(user._id)
-        }
-      } catch (error) {
-        console.error('Error fetching data:', error)
-        Alert.alert('Error', 'Failed to load notifications')
-      }
-    }
-    fetchData()
-  }, [])
+  // ✅ Fetch notifications reactively
+  const notifications = useQuery(
+    api.notifications.getNotifications,
+    user?._id ? { userId: user._id } : "skip"
+  ) ?? [];
+  const isLoading = notifications === undefined && user?._id !== undefined;
 
   const handleRefresh = async () => {
     setRefreshing(true)
-    try {
-      if (user?._id) await getNotification(user._id)
-    } catch (error) {
-      console.error('Error refreshing notifications:', error)
-      Alert.alert('Error', 'Failed to refresh notifications')
-    } finally {
-      setRefreshing(false)
-    }
+    // In Convex, data is reactive, but we can simulate a pull-to-refresh
+    setTimeout(() => setRefreshing(false), 500)
   }
 
   const handleNotificationPress = (item) => {
@@ -79,7 +67,6 @@ const Notification = () => {
       }
       if (path) router.push(path);
       markAsRead(item._id)
-        .then(() => { if (user?._id) getNotification(user._id); })
         .catch((err) => console.error('Error marking notification as read', err));
     } catch (err) {
       console.error('Error handling notification', err);
@@ -191,7 +178,7 @@ const Notification = () => {
                   </Text>
                 )}
                 <Text className="text-xs text-gray-400 mt-1">
-                  {formatRelativeTime(item?.createdAt)}
+                  {formatRelativeTime(item?._creationTime)}
                 </Text>
               </View>
 
