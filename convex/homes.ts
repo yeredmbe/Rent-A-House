@@ -59,6 +59,11 @@ export const createHome = mutation({
         if (!phoneRegex.test(args.telephone.replace(/\D/g, "")))
             throw new Error("INVALID_PHONE");
 
+        const whatsappRegex = /^(https?:\/\/)?(wa\.me|api\.whatsapp\.com|chat\.whatsapp\.com)\/.+/i;
+        if (!whatsappRegex.test(args.whatsapp_url.trim())) {
+            throw new Error("INVALID_WHATSAPP_LINK");
+        }
+
         const homeId = await ctx.db.insert("homes", {
             userId: args.userId,
             address: args.address,
