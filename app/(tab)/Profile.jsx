@@ -1,7 +1,7 @@
 import { Entypo } from '@expo/vector-icons'
 import * as ImagePicker from 'expo-image-picker'
 import { router } from 'expo-router'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ActivityIndicator, Alert, Image, KeyboardAvoidingView, Modal, RefreshControl, ScrollView, Share, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import { Dropdown } from 'react-native-element-dropdown'
@@ -11,7 +11,7 @@ import CustomButton from '../../components/CustomButton'
 import InputField from '../../components/InputField'
 import icons from '../../constant/icons'
 import { useStore } from '../../Stores/authStore'
-import uploadToCloudinary from '../lib/uploadToCloudinary';
+import uploadToCloudinary from '../lib/uploadToCloudinary'
 
 
 const Profile = () => {
@@ -49,17 +49,17 @@ const Profile = () => {
       if (!result.canceled) {
         const selectedImage = result.assets[0];
         const base64Image = `data:${selectedImage.mimeType};base64,${selectedImage.base64}`;
-        
+
         // Temporarily set local image so UI updates immediately
         setImage(base64Image);
-        
+
         try {
           const cloudinaryResponse = await uploadToCloudinary(base64Image);
           if (cloudinaryResponse && cloudinaryResponse.secure_url) {
             await updateProfileImage(cloudinaryResponse.secure_url);
             setImage(cloudinaryResponse.secure_url);
           } else {
-             showToast({
+            showToast({
               message: 'Failed to upload to Cloudinary',
               duration: 5000,
               type: 'error',
@@ -83,7 +83,7 @@ const Profile = () => {
             richColors: true,
           });
         }
-        
+
         setISOpen(false);
       }
     } catch (error) {
@@ -215,7 +215,7 @@ const Profile = () => {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 30 }}
         refreshControl={
-          <RefreshControl tintColor="#124BCC" refreshing={isLoading} onRefresh={() => {}} />
+          <RefreshControl tintColor="#124BCC" refreshing={isLoading} onRefresh={() => { }} />
         }
       >
         {/* Header */}
@@ -297,6 +297,8 @@ const Profile = () => {
             className="flex-1"
             contentContainerStyle={{ paddingBottom: 40 }}
             showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            nestedScrollEnabled={true}
           >
             {/* Modal Header */}
             <View className="flex-row items-center justify-between px-5 py-4 border-b border-gray-100">
@@ -332,7 +334,7 @@ const Profile = () => {
             </View>
 
             {/* Form */}
-            <View className="px-5 gap-1">
+            <View className="px-5 gap-1 items-center justify-center">
               <InputField
                 label={t("name")}
                 placeholder="JohnDoe"
