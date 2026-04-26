@@ -22,7 +22,7 @@ export const register = mutation({
     args: {
         name: v.string(),
         email: v.string(),
-        hashedPassword: v.string(),
+        password: v.string(),
         role: v.optional(
             v.union(v.literal("client"), v.literal("landLord"), v.literal("admin"))
         ),
@@ -44,7 +44,7 @@ export const register = mutation({
         const userId = await ctx.db.insert("users", {
             name: args.name,
             email: args.email,
-            password: args.hashedPassword,
+            password: args.password,
             role,
             favorites: [],
             chat_users: [],

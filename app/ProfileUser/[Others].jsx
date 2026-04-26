@@ -1,12 +1,10 @@
 import { Entypo } from '@expo/vector-icons'
+import { useQuery } from "convex/react"
 import { router, useLocalSearchParams } from 'expo-router'
-import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Image, ScrollView, Text, TouchableOpacity, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { useStore } from '../../Stores/authStore'
 import icons from '../../constant/icons'
-import { useQuery } from "convex/react"
 import { api } from "../../convex/_generated/api"
 
 
@@ -30,7 +28,7 @@ const Others = () => {
           <View className={`flex size-48 rounded-full items-center justify-center my-5 ${userProfile?.image_url ? "" : "bg-gray-200"} border-4 border-gray-400`}>
             <Image
               source={userProfile?.image_url ? { uri: userProfile.image_url } : icons.userr}
-              tintColor={userProfile?.image_url ? "" : '#124BCC'}
+              tintColor={!userProfile?.image_url ? '#124BCC' : null}
               className={`${userProfile?.image_url ? "size-48 rounded-full" : "size-28"} `}
               resizeMode="cover"
             />

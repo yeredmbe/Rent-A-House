@@ -19,18 +19,25 @@ import { api } from "../convex/_generated/api";
 import type { Id } from "../convex/_generated/dataModel";
 
 // ─── Convex client (singleton) ───────────────────────────────────────────────
-// In your app entry point you should also wrap with <ConvexProvider client={convex}>
-// so that useQuery/useMutation hooks work in components.
 export const convex = new ConvexReactClient(
   process.env.EXPO_PUBLIC_CONVEX_URL ?? ""
 );
 
-const CONVEX_URL = process.env.EXPO_PUBLIC_CONVEX_URL ?? "";
-// HTTP actions live at <convex-site-url> which is separate from the websocket URL.
-// Set EXPO_PUBLIC_CONVEX_SITE_URL in your .env (shown in Convex dashboard).
 const SITE_URL = process.env.EXPO_PUBLIC_CONVEX_SITE_URL ?? "";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
+type AllowedLocation =
+  | "Bafoussam"
+  | "Douala"
+  | "Yaounde"
+  | "Buea"
+  | "Bamenda"
+  | "Garoua"
+  | "Maroua"
+  | "Ngaoundere"
+  | "Adamawa"
+  | "Bertoua";
+
 interface AuthState {
   user: Record<string, unknown> | null;
   userId: Id<"users"> | null;
@@ -53,11 +60,13 @@ interface AuthState {
 
   restoreSession: () => Promise<void>;
 
+  updateFavorites: (homeId: Id<"homes">) => void;
+
   editProfile: (data: {
     name?: string;
     email?: string;
     age?: number;
-    location?: "Bafoussam" | "Douala" | "Yaounde" | "Buea" | "Bamenda" | "Garoua" | "Maroua" | "Ngaoundere" | "Adamawa" | "Bertoua";
+    location?: AllowedLocation | null;
   }) => Promise<void>;
 
   updateProfileImage: (imageUrl: string, publicId?: string) => Promise<void>;
@@ -148,9 +157,6 @@ export const useStore = create<AuthState>((set, get) => ({
   },
 
   // ── RESTORE SESSION ──────────────────────────────────────────────────────────
-  // Call this in your root layout _layout.tsx on mount.
-  // After restoring, use useQuery(api.users.getById, { userId }) in components
-  // for live user data — no polling needed.
   restoreSession: async () => {
     set({ isLoading: true });
     try {
@@ -163,12 +169,10 @@ export const useStore = create<AuthState>((set, get) => ({
         return;
       }
 
-      // Load cached user immediately for offline support and faster startup
       if (userCache) {
         set({ user: JSON.parse(userCache), userId, token, isAuthenticated: true, isLoading: false });
       }
 
-      // Fetch fresh user data directly from Convex (the requested getById usage)
       try {
         const user = await convex.query(api.users.getById, { userId });
         if (!user) {
@@ -179,10 +183,9 @@ export const useStore = create<AuthState>((set, get) => ({
 
         await AsyncStorage.setItem("user_cache", JSON.stringify(user));
         set({ user, userId, token, isAuthenticated: true, isLoading: false });
-      } catch (err) {
-        // If we fail to fetch (e.g., offline), we keep the cached user if we have one
+      } catch {
         if (!userCache) {
-           set({ isLoading: false, isAuthenticated: false });
+          set({ isLoading: false, isAuthenticated: false });
         }
       }
     } catch {
@@ -197,17 +200,39 @@ export const useStore = create<AuthState>((set, get) => ({
     router.replace("/SignIn");
   },
 
+  // ── TOGGLE FAVORITE LOCALLY ──────────────────────────────────────────────────
+  updateFavorites: (homeId) => {
+    const user = get().user;
+    if (!user) return;
+    const favorites = user.favorites as Id<"homes">[] | undefined;
+    const updated = favorites?.includes(homeId)
+      ? favorites.filter((id) => id !== homeId)
+      : [...(favorites ?? []), homeId];
+    set({ user: { ...user, favorites: updated } });
+  },
+
   // ── EDIT PROFILE INFO ────────────────────────────────────────────────────────
   editProfile: async (data) => {
     const userId = get().userId;
     if (!userId) return;
     set({ isLoading: true });
     try {
-      // Direct mutation — no HTTP round-trip
-      const updated = await convex.mutation(api.users.editUser, {
-        userId,
-        ...data,
-      });
+      // FIX: build the payload without location if it is null/undefined/empty.
+      // Convex validates location as a strict union — sending null causes
+      // an ArgumentValidationError even if the field is marked optional.
+      const payload: Record<string, unknown> = { userId };
+
+      if (data.name?.trim()) payload.name = data.name.trim();
+      if (data.email?.trim()) payload.email = data.email.trim();
+      if (data.age != null) payload.age = data.age;
+
+      // Only include location when it is a non-empty string
+      if (data.location && typeof data.location === "string" && data.location.trim()) {
+        payload.location = data.location as AllowedLocation;
+      }
+
+      const updated = await convex.mutation(api.users.editUser, payload as any);
+
       set({ user: updated ?? get().user, isLoading: false });
       if (updated) {
         await AsyncStorage.setItem("user_cache", JSON.stringify(updated));
@@ -222,7 +247,6 @@ export const useStore = create<AuthState>((set, get) => ({
   },
 
   // ── UPDATE PROFILE IMAGE ─────────────────────────────────────────────────────
-  // imageUrl should already be the Cloudinary secure_url (upload on client first)
   updateProfileImage: async (imageUrl, publicId) => {
     const userId = get().userId;
     if (!userId) return;
@@ -247,8 +271,6 @@ export const useStore = create<AuthState>((set, get) => ({
   },
 
   // ── GET ANOTHER USER'S PROFILE ───────────────────────────────────────────────
-  // Prefer using useQuery(api.users.getUserProfile, { userId: id }) in components
-  // for automatic real-time updates. This imperative version is for one-off needs.
   getUserProfile: async (id) => {
     set({ isProfileLoading: true });
     try {

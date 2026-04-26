@@ -1,20 +1,19 @@
 import { Entypo } from '@expo/vector-icons'
+import { useMutation } from "convex/react"
 import { router } from 'expo-router'
-import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { FlatList, Image, Text, TouchableOpacity, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import icons from '../constant/icons'
-import { messageStore } from '../Stores/messageStore'
-import { useStore } from '../Stores/authStore'
-import { useMutation } from "convex/react"
 import { api } from "../convex/_generated/api"
-import { useCachedQuery } from '../hooks/useCachedQuery';
+import { useCachedQuery } from '../hooks/useCachedQuery'
+import { useStore } from '../Stores/authStore'
+import { messageStore } from '../Stores/messageStore'
 
 const Message = () => {
   const { setSelectedUser } = messageStore()
   const { user } = useStore()
-  
+
   const chatUsers = useCachedQuery(api.messages.getChatUsers, user?._id ? { userId: user._id } : "skip", `cache_chat_users_${user?._id}`) ?? [];
   const markAsRead = useMutation(api.messages.markMessagesAsRead);
   const { t } = useTranslation()
@@ -50,7 +49,7 @@ const Message = () => {
         keyExtractor={(item) => item._id.toString()}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ flexGrow: 1, paddingVertical: 12, paddingHorizontal: 12 }}
-        onRefresh={() => {}}
+        onRefresh={() => { }}
         refreshing={false}
         renderItem={({ item }) => (
           <TouchableOpacity
@@ -94,7 +93,7 @@ const Message = () => {
               <View className="mt-1">
                 <View className="self-start bg-blue-50 rounded-full px-2 py-0.5">
                   <Text className="text-xs text-[#124BCC] font-medium">
-                    {item.role === "landLord" ? t("LandLord") : "Client"}
+                    {item.role === "landLord" ? t("LandLord") : item.role === "client" ? "client" : "admin"}
                   </Text>
                 </View>
               </View>

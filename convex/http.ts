@@ -70,7 +70,7 @@ const registerHandler = httpAction(async (ctx, req) => {
         result = await ctx.runMutation(api.users.register, {
             name,
             email,
-            hashedPassword,
+            password: hashedPassword,
             role,
             // ExpoPushToken,
         });

@@ -47,7 +47,7 @@ export default defineSchema({
     homes: defineTable({
         userId: v.id("users"),
         city: v.string(),
-        address: v.string(),
+        address: v.optional(v.string()),
         price: v.number(),
         category: v.union(
             v.literal("House"),

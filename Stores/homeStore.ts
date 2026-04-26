@@ -20,16 +20,48 @@ import type { Id } from "../convex/_generated/dataModel";
 import i18next from "../Services/i18next";
 import { convex } from "./authStore";
 
+// ─── Form data shape exactly matching the Convex mutation args ────────────────
+interface CreateHomeFields {
+  address: string;
+  description: string;
+  city: string;
+  telephone: string;
+  category: string;
+  price: number | string; // string accepted here, coerced before sending
+  home_cover: string;
+  whatsapp_url: string;
+  facebook_url?: string;
+  region: string;
+  details: string[];
+  lat?: string;
+  long?: string;
+}
+
 interface HomeState {
   isLoading: boolean;
   error: string | null;
 
-  createHome: (userId: Id<"users">, formData: Record<string, unknown>) => Promise<Id<"homes"> | void>;
+  createHome: (userId: Id<"users">, formData: CreateHomeFields) => Promise<Id<"homes"> | void>;
   deleteHome: (homeId: Id<"homes">, userId: Id<"users">) => Promise<void>;
-  updateHome: (homeId: Id<"homes">, userId: Id<"users">, formData: Record<string, unknown>) => Promise<void>;
+  updateHome: (homeId: Id<"homes">, userId: Id<"users">, formData: CreateHomeFields) => Promise<void>;
   toggleAvailability: (homeId: Id<"homes">, userId: Id<"users">) => Promise<void>;
   toggleFavorite: (homeId: Id<"homes">, userId: Id<"users">) => Promise<void>;
   addReview: (homeId: Id<"homes">, userId: Id<"users">, text: string) => Promise<void>;
+}
+
+/**
+ * Sanitises raw form values before they reach Convex:
+ *  - price: coerce string → number
+ *  - telephone: strip all non-digit characters (spaces, dashes, etc.)
+ *  - facebook_url: treat empty string as undefined so Convex optional field is clean
+ */
+function sanitiseHomeFields(fields: CreateHomeFields) {
+  return {
+    ...fields,
+    price: typeof fields.price === "string" ? parseFloat(fields.price) : fields.price,
+    telephone: fields.telephone.replace(/\D/g, ""),
+    facebook_url: fields.facebook_url?.trim() || undefined,
+  };
 }
 
 export const homeStore = create<HomeState>((set) => ({
@@ -42,10 +74,12 @@ export const homeStore = create<HomeState>((set) => ({
   createHome: async (userId, formData) => {
     set({ isLoading: true });
     try {
+      // FIX 1: spread fields at root level alongside userId — do NOT nest formData inside userId
+      // FIX 2: sanitise price (string→number) and telephone (strip spaces/dashes)
       const homeId = await convex.mutation(api.homes.createHome, {
         userId,
-        ...(formData as any),
-      });
+        ...sanitiseHomeFields(formData),
+      } as any);
 
       showToast({
         message: i18next.t("Property listed successfully!"),
@@ -63,10 +97,10 @@ export const homeStore = create<HomeState>((set) => ({
         raw === "PRICE_TOO_LOW"
           ? "Price must be greater than 5000"
           : raw === "INVALID_DETAILS_COUNT"
-          ? "Provide between 3 and 10 detail images"
-          : raw === "INVALID_PHONE"
-          ? "Invalid telephone number"
-          : raw;
+            ? "Provide between 3 and 10 detail images"
+            : raw === "INVALID_PHONE"
+              ? "Invalid telephone number"
+              : raw;
       showToast({ message: msg, type: "error", duration: 5000, position: "top", title: "Error" });
       set({ error: msg });
     } finally {
@@ -95,8 +129,8 @@ export const homeStore = create<HomeState>((set) => ({
       await convex.mutation(api.homes.updateHome, {
         homeId,
         userId,
-        ...(formData as any),
-      });
+        ...sanitiseHomeFields(formData),
+      } as any);
       showToast({ message: i18next.t("Home updated"), type: "success", duration: 3000, position: "top", title: "Success" });
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Update failed";

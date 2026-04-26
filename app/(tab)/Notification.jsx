@@ -1,14 +1,15 @@
 import { router } from 'expo-router'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ActivityIndicator, Alert, FlatList, Image, Text, TouchableOpacity, View } from 'react-native'
+import { ActivityIndicator, FlatList, Image, Text, TouchableOpacity, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import icons from '../../constant/icons'
+import { api } from "../../convex/_generated/api"
 import { useStore } from '../../Stores/authStore'
 import { messageStore } from '../../Stores/messageStore'
 import { notificationStore } from '../../Stores/notificationStore'
-import { useQuery } from "convex/react"
-import { api } from "../../convex/_generated/api"
+// FIX: replaced useQuery with useCachedQuery for offline support
+import { useCachedQuery } from '../../hooks/useCachedQuery'
 
 function formatRelativeTime(dateString) {
   if (!dateString) return 'Unknown time';
@@ -42,30 +43,45 @@ const Notification = () => {
   const [refreshing, setRefreshing] = useState(false)
   const { t } = useTranslation()
 
-  // ✅ Fetch notifications reactively
-  const notifications = useQuery(
+  // FIX: useCachedQuery persists data to AsyncStorage so notifications
+  // are visible even when the device is offline.
+  const notifications = useCachedQuery(
     api.notifications.getNotifications,
-    user?._id ? { userId: user._id } : "skip"
+    user?._id ? { userId: user._id } : 'skip',
+    `cache_notifs_${user?._id}`
   ) ?? [];
+
   const isLoading = notifications === undefined && user?._id !== undefined;
 
   const handleRefresh = async () => {
     setRefreshing(true)
-    // In Convex, data is reactive, but we can simulate a pull-to-refresh
     setTimeout(() => setRefreshing(false), 500)
   }
 
+  // FIX: handleNotificationPress — always build a proper {_id, name} object
+  // before calling setSelectedUser so messageStore never receives "undefined".
+  // Route based on notification_type:
+  //   message / welcome / system  → /Message/<senderId>
+  //   review / new_house / favorites → /House/<homeId>
   const handleNotificationPress = (item) => {
     if (!item?._id) return;
     try {
-      setSelectedUser(item.senderId);
       let path = '';
+
       if (['message', 'welcome', 'system'].includes(item.notification_type)) {
-        path = item.senderId?._id ? `/Message/${item.senderId._id}` : '';
+        const sender = item.senderId;
+        if (sender?._id) {
+          setSelectedUser({ _id: sender._id, name: sender.name ?? 'Unknown' });
+          path = `/Message/${sender._id}`;
+        }
       } else if (['review', 'new_house', 'favorites'].includes(item.notification_type)) {
-        path = item.homeId?._id ? `/House/${item.homeId._id}` : '';
+        if (item.homeId?._id) {
+          path = `/House/${item.homeId._id}`;
+        }
       }
+
       if (path) router.push(path);
+
       markAsRead(item._id)
         .catch((err) => console.error('Error marking notification as read', err));
     } catch (err) {

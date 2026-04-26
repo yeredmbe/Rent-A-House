@@ -46,7 +46,7 @@ export const sendMessage = mutation({
                 });
             }
         }
-        
+
         const receiverChats = receiver.chat_users ?? [];
         if (!receiverChats.includes(args.senderId)) {
             await ctx.db.patch(args.receiverId, {
