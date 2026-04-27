@@ -15,10 +15,16 @@ export const getNotifications = query({
         return Promise.all(
             notifications.map(async (n) => {
                 const sender = await ctx.db.get(n.senderId);
+                const home = n.homeId ? await ctx.db.get(n.homeId) : null;
                 return {
                     ...n,
-                    sender: sender
-                        ? { name: sender.name, email: sender.email, image_url: sender.image_url }
+                    // FIX: replace raw senderId with populated object
+                    senderId: sender
+                        ? { _id: sender._id, name: sender.name, email: sender.email, image_url: sender.image_url }
+                        : null,
+                    // FIX: replace raw homeId with populated object
+                    homeId: home
+                        ? { _id: home._id, home_cover: home.home_cover, address: home.address }
                         : null,
                 };
             })

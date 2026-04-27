@@ -18,8 +18,6 @@ const Message = () => {
   const markAsRead = useMutation(api.messages.markMessagesAsRead);
   const { t } = useTranslation()
 
-
-
   const unreadCount = useCachedQuery(api.messages.countUnreadMessages, user?._id ? { userId: user._id } : "skip", `cache_unread_count_${user?._id}`) ?? 0;
 
   return (
@@ -85,10 +83,21 @@ const Message = () => {
                 </Text>
               </View>
               <View className="flex-row items-center justify-between mt-0.5">
-                <Text className="text-sm text-gray-500" numberOfLines={1}>
-                  {t("newMessage")} {item.role === "landLord" ? t("LandLord") : "Client"}.
-                </Text>
-
+                {item.lastMessage?.image_url && !item.lastMessage?.text ? (
+                  <View className="flex-row items-center gap-1">
+                    <Entypo name="camera" size={13} color="#9ca3af" />
+                    <Text className="text-sm text-gray-400" numberOfLines={1}>Photo</Text>
+                  </View>
+                ) : (
+                  <Text className="text-sm text-gray-500 flex-1" numberOfLines={1}>
+                    {item.lastMessage?.text || t("newMessage")}
+                  </Text>
+                )}
+                {item.unreadCount > 0 && (
+                  <View className="bg-[#124BCC] rounded-full size-5 items-center justify-center ml-2">
+                    <Text className="text-white text-xs font-bold">{item.unreadCount}</Text>
+                  </View>
+                )}
               </View>
               <View className="mt-1">
                 <View className="self-start bg-blue-50 rounded-full px-2 py-0.5">

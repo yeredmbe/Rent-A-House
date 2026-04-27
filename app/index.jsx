@@ -7,36 +7,37 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useStore } from '../Stores/authStore';
 
 export default function Index() {
-  const { user,isLoading } = useStore();
+  const { user, isLoading } = useStore();
   const [currentIndex, setCurrentIndex] = useState(0);
-  const scrollRef=React.useRef();
-    const { t } = useTranslation()
+  const scrollRef = React.useRef();
+  const { t } = useTranslation()
 
-    
+
   const Images = [
     { id: 0, src: require("../assets/images/House-searching-amico.png") },
     { id: 1, src: require("../assets/images/House-searching-rafiki.png") },
     { id: 2, src: require("../assets/images/House-searching-bro.png") },
     { id: 3, src: require("../assets/images/House-searching-pana.png") },
   ]
- 
 
 
 
-useEffect(() => {
-  if (user) {
-    router.replace("/Home");
-  }
-}, [user]);
 
-  if(isLoading){
-    return(
-    <SafeAreaView className="flex-1 bg-white justify-center items-center">
+  useEffect(() => {
+    if (user) {
+      router.replace("/Home");
+    }
+  }, [user]);
+
+  if (isLoading) {
+    return (
+      <SafeAreaView className="flex-1 bg-white justify-center items-center">
         <ActivityIndicator size="large" color="#124BCC" />
         <Text className="text-sm font-bold text-gray-500 mt-2">Loading...</Text>
       </SafeAreaView>
-    )}
-  
+    )
+  }
+
   return (
     <SafeAreaView
       className="flex-1 flex flex-col items-center justify-center bg-white"
@@ -60,7 +61,7 @@ useEffect(() => {
         />
       </View>
 
-     {/*  {currentIndex > 0 && (
+      {/*  {currentIndex > 0 && (
         <TouchableOpacity onPress={() => {scrollRef.current.scrollToOffset({ offset: (parseInt(currentIndex )- 1) * Dimensions.get("window").width, animated: true })}} activeOpacity={0.7} className=" flex flex-row items-center justify-start bg-[#124BCC]  rounded-lg px-5 py-2 absolute bottom-12 left-9">
           <Entypo name="chevron-left" size={30} color="white" />
           <Text className="text-white">Previous</Text>
@@ -75,14 +76,14 @@ useEffect(() => {
       )}
       {/* this is the bullet section */}
 
-     <View className={`flex-row ${Platform.OS === 'android' ? 'mb-6' : 'mb-4'}`}>
-  {Images.map((item, index) => (
-    <View 
-      key={item.id} 
-      className={`${currentIndex == item.id ? "w-8 h-4" : "size-4"} ${currentIndex == item.id ? "bg-[#124BCC]" : "bg-gray-400"} mx-1 mb-12 rounded-full`} 
-    />
-  ))}
-</View>
+      <View className={`flex-row ${Platform.OS === 'android' ? 'mb-6' : 'mb-4'}`}>
+        {Images.map((item, index) => (
+          <View
+            key={item.id}
+            className={`${currentIndex == item.id ? "w-8 h-4" : "size-4"} ${currentIndex == item.id ? "bg-[#124BCC]" : "bg-gray-400"} mx-1 mb-12 rounded-full`}
+          />
+        ))}
+      </View>
     </SafeAreaView>
   );
 }

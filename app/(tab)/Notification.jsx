@@ -1,14 +1,14 @@
+import { useMutation } from "convex/react"
 import { router } from 'expo-router'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ActivityIndicator, FlatList, Image, Text, TouchableOpacity, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import icons from '../../constant/icons'
-import { api } from "../../convex/_generated/api"
 import { useStore } from '../../Stores/authStore'
 import { messageStore } from '../../Stores/messageStore'
 import { notificationStore } from '../../Stores/notificationStore'
-// FIX: replaced useQuery with useCachedQuery for offline support
+import icons from '../../constant/icons'
+import { api } from "../../convex/_generated/api"
 import { useCachedQuery } from '../../hooks/useCachedQuery'
 
 function formatRelativeTime(dateString) {
@@ -43,8 +43,8 @@ const Notification = () => {
   const [refreshing, setRefreshing] = useState(false)
   const { t } = useTranslation()
 
-  // FIX: useCachedQuery persists data to AsyncStorage so notifications
-  // are visible even when the device is offline.
+  const markMessagesAsRead = useMutation(api.messages.markMessagesAsRead);
+
   const notifications = useCachedQuery(
     api.notifications.getNotifications,
     user?._id ? { userId: user._id } : 'skip',
@@ -58,11 +58,6 @@ const Notification = () => {
     setTimeout(() => setRefreshing(false), 500)
   }
 
-  // FIX: handleNotificationPress — always build a proper {_id, name} object
-  // before calling setSelectedUser so messageStore never receives "undefined".
-  // Route based on notification_type:
-  //   message / welcome / system  → /Message/<senderId>
-  //   review / new_house / favorites → /House/<homeId>
   const handleNotificationPress = (item) => {
     if (!item?._id) return;
     try {
@@ -73,6 +68,11 @@ const Notification = () => {
         if (sender?._id) {
           setSelectedUser({ _id: sender._id, name: sender.name ?? 'Unknown' });
           path = `/Message/${sender._id}`;
+
+          if (item.notification_type === 'message' && user?._id) {
+            markMessagesAsRead({ senderId: sender._id, receiverId: user._id })
+              .catch((err) => console.error('Error marking messages as read', err));
+          }
         }
       } else if (['review', 'new_house', 'favorites'].includes(item.notification_type)) {
         if (item.homeId?._id) {
@@ -139,7 +139,7 @@ const Notification = () => {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-white">
+    <SafeAreaView className="min-h-full bg-white">
 
       {/* Header */}
       <View className="px-5 pt-3 pb-4 flex-row items-center justify-between border-b border-gray-100">

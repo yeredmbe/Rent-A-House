@@ -51,7 +51,7 @@ const Home = () => {
   ];
 
   return (
-    <SafeAreaView edges={['top']} className={`android:flex-1 h-screen bg-white`}>
+    <SafeAreaView edges={['top']} className={`min-h-full bg-white`}>
       <View className='flex flex-row items-center justify-between p-4 mx-3'>
         <TouchableOpacity activeOpacity={0.7} onPress={() => router.push("/Profile")} className={`size-10 rounded-full ${user?.image_url ? "" : "bg-gray-200 "}items-center justify-center`}>
           <Image source={user?.image_url ? { uri: user?.image_url } : icon.userr} className={`${user?.image_url ? "size-10 rounded-full" : "size-6"}`} tintColor={!user?.image_url ? '#124BCC' : null} resizeMode='cover' />

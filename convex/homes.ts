@@ -52,17 +52,18 @@ export const createHome = mutation({
     },
     handler: async (ctx, args) => {
         if (args.price <= 5000) throw new Error("PRICE_TOO_LOW");
-        if (args.details.length < 3 || args.details.length > 10)
-            throw new Error("INVALID_DETAILS_COUNT");
+        if (args.details.length < 3 || args.details.length > 10) return
+        // throw new Error("INVALID_DETAILS_COUNT");
 
         const phoneRegex = /^[0-9]{9,15}$/;
-        if (!phoneRegex.test(args.telephone.replace(/\D/g, "")))
-            throw new Error("INVALID_PHONE");
+        if (!phoneRegex.test(args.telephone.replace(/\D/g, ""))) return
+        // throw new Error("INVALID_PHONE");
 
         const whatsappRegex = /^(https?:\/\/)?(wa\.me|api\.whatsapp\.com|chat\.whatsapp\.com)\/.+/i;
-        if (!whatsappRegex.test(args.whatsapp_url.trim())) {
-            throw new Error("INVALID_WHATSAPP_LINK");
-        }
+        if (!whatsappRegex.test(args.whatsapp_url.trim())) return
+        //  {
+        //     throw new Error("INVALID_WHATSAPP_LINK");
+        // }
 
         const homeId = await ctx.db.insert("homes", {
             userId: args.userId,
@@ -159,7 +160,7 @@ export const getHome = query({
                 return {
                     ...r,
                     user: user
-                        ? { name: user.name, email: user.email, image_url: user.image_url }
+                        ? { _id: user._id, name: user.name, email: user.email, image_url: user.image_url }
                         : null,
                 };
             })
@@ -317,29 +318,6 @@ export const toggleFavorite = mutation({
         if (home.userId === args.userId)
             throw new Error("CANNOT_FAVORITE_OWN_HOME");
 
-        const isFav = user.favorites.includes(args.homeId);
-
-        if (isFav) {
-            await ctx.db.patch(args.userId, {
-                favorites: user.favorites.filter((id) => id !== args.homeId),
-            });
-            return { action: "removed" };
-        } else {
-            await ctx.db.patch(args.userId, {
-                favorites: [...user.favorites, args.homeId],
-            });
-
-            // Create notification for home owner
-            await ctx.db.insert("notifications", {
-                senderId: args.userId,
-                receiverId: home.userId,
-                notification_type: "favorites",
-                homeId: args.homeId,
-                isRead: false,
-            });
-
-            return { action: "added" };
-        }
     },
 });
 
@@ -404,7 +382,7 @@ export const getReviews = query({
                 return {
                     ...r,
                     user: user
-                        ? { name: user.name, email: user.email, image_url: user.image_url }
+                        ? { _id: user._id, name: user.name, email: user.email, image_url: user.image_url }
                         : null,
                 };
             })

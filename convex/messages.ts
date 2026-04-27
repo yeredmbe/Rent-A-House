@@ -67,7 +67,6 @@ export const getMessages = query({
         userB: v.id("users"),
     },
     handler: async (ctx, args) => {
-        // Fetch both directions and merge
         const sent = await ctx.db
             .query("messages")
             .withIndex("by_conversation", (q) =>
@@ -86,14 +85,14 @@ export const getMessages = query({
             (a, b) => a._creationTime - b._creationTime
         );
 
-        // Attach sender info
         return Promise.all(
             all.map(async (msg) => {
                 const sender = await ctx.db.get(msg.senderId);
                 return {
                     ...msg,
-                    sender: sender
-                        ? { name: sender.name, email: sender.email, image_url: sender.image_url }
+                    // FIX: replace raw senderId with populated object including _id
+                    senderId: sender
+                        ? { _id: sender._id, name: sender.name, email: sender.email, image_url: sender.image_url }
                         : null,
                 };
             })

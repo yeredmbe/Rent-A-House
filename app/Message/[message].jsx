@@ -1,4 +1,5 @@
 import { Entypo } from '@expo/vector-icons';
+import { useMutation } from "convex/react";
 import * as ImagePicker from 'expo-image-picker';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
@@ -9,7 +10,6 @@ import { showToast } from 'rn-snappy-toast';
 import { useStore } from '../../Stores/authStore';
 import { messageStore } from '../../Stores/messageStore';
 import icon from '../../constant/icons';
-import { useQuery, useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { useCachedQuery } from '../../hooks/useCachedQuery';
 import uploadToCloudinary from '../lib/uploadToCloudinary';
@@ -20,46 +20,24 @@ const Message = () => {
         text: '',
         image_url: ''
     });
-    const [pendingMessages, setPendingMessages] = useState([]);
     const { selectedUser } = messageStore()
     const { user } = useStore()
     const { message } = useLocalSearchParams()
     const scrollRef = useRef();
     const { t } = useTranslation()
 
-    // ✅ Reactively fetch messages
-    const messages = useCachedQuery(api.messages.getMessages, 
+    const messages = useCachedQuery(api.messages.getMessages,
         (user?._id && message) ? { userA: user._id, userB: message } : "skip",
         `cache_messages_${user?._id}_${message}`
     ) ?? [];
     const sendMessageMutation = useMutation(api.messages.sendMessage);
 
-    // Remove pending messages only when their content is confirmed in the real messages list
-    useEffect(() => {
-        if (!messages?.length || !pendingMessages.length) return;
-
-        setPendingMessages(prev =>
-            prev.filter(pending => {
-                // Keep pending if its text/image is not yet found in real messages
-                return !messages.some(msg =>
-                    msg.text === pending.text &&
-                    msg.image_url === pending.image_url &&
-                    msg.senderId._id === user._id
-                );
-            })
-        );
-    }, [messages]);
-
-    useEffect(() => {
-        // User is loaded via layout or app level, but ensuring it's available
-    }, [])
-
-    // Auto-scroll whenever messages or pendingMessages change
+    // Auto-scroll whenever messages change
     useEffect(() => {
         setTimeout(() => {
             scrollRef?.current?.scrollToEnd({ animated: true });
         }, 100);
-    }, [messages, pendingMessages]);
+    }, [messages]);
 
 
     const pickImage = async () => {
@@ -101,7 +79,7 @@ const Message = () => {
     };
 
 
-    const handleSendMessage = () => {
+    const handleSendMessage = async () => {
         const hasText = messagez.text.trim().length > 0;
         const hasImage = messagez.image_url !== "";
 
@@ -112,29 +90,16 @@ const Message = () => {
             ...(messagez.image_url && { image_url: messagez.image_url })
         };
 
-    // Immediately show the message in the chat (optimistic UI)
-    const optimisticMsg = {
-        _id: `pending-${Date.now()}`,
-        senderId: { _id: user._id, name: user.name },
-        text: cleanMessage.text || "",
-        image_url: cleanMessage.image_url || "",
-        createdAt: new Date().toISOString(),
-        pending: true,
-    };
+        setMessage({ text: "", image_url: "" });
 
-    setPendingMessages(prev => [...prev, optimisticMsg]);
-    setMessage({ text: "", image_url: "" }); // Clear input immediately
-    
-    // Process image upload asynchronously if needed
-    const processMessage = async () => {
         let finalImageUrl = cleanMessage.image_url;
-        
+
         try {
             if (finalImageUrl && finalImageUrl.startsWith("data:image")) {
                 const uploadRes = await uploadToCloudinary(finalImageUrl);
                 finalImageUrl = uploadRes.secure_url;
             }
-            
+
             await sendMessageMutation({
                 senderId: user._id,
                 receiverId: message,
@@ -143,8 +108,6 @@ const Message = () => {
             });
         } catch (err) {
             console.error("Send message error:", err);
-            // Remove optimistic message on failure
-            setPendingMessages(prev => prev.filter(msg => msg._id !== optimisticMsg._id));
             showToast({
                 message: 'Failed to send message',
                 duration: 5000,
@@ -157,9 +120,6 @@ const Message = () => {
             });
         }
     };
-    
-    processMessage();
-};
 
 
     const removeImage = () => {
@@ -174,8 +134,6 @@ const Message = () => {
         }
     };
 
-    const allMessages = [...(messages ?? []), ...pendingMessages];
-
     return (
         <SafeAreaView edges={['top']} className="flex-1 bg-white">
             <KeyboardAvoidingView
@@ -188,7 +146,6 @@ const Message = () => {
                         <Entypo name="chevron-left" size={30} color="#124BCC" />
                     </TouchableOpacity>
                     <Text className='text-xl font-bold text-[#124BCC]'>{t("Chats")}</Text>
-                    {/* Spacer to keep title centered */}
                     <View className="size-10" />
                 </View>
 
@@ -198,13 +155,13 @@ const Message = () => {
                     showsVerticalScrollIndicator={false}
                     onContentSizeChange={() => scrollRef?.current?.scrollToEnd({ animated: true })}
                 >
-                    {allMessages.map((msg, index) => (
+                    {messages.map((msg, index) => (
                         <View
                             key={msg._id ?? index}
                             className={`my-2 p-1 rounded-lg max-w-96 ${msg.senderId._id === user._id
                                 ? "bg-blue-100 self-end"
                                 : "bg-gray-100 self-start"
-                            }`}
+                                }`}
                         >
                             <Text className={`${msg.senderId._id === user._id ? "text-right" : "text-left"} text-sm font-bold`}>
                                 {getSenderName(msg)}
@@ -218,7 +175,7 @@ const Message = () => {
                                 </Text>
                             )}
                             <Text className={`${msg.senderId._id === user._id ? "text-right" : "text-left"} text-xs text-gray-400`}>
-                                {msg.pending ? "⏱ Sending..." : new Date(msg._creationTime || msg.createdAt).toLocaleString()}
+                                {new Date(msg._creationTime || msg.createdAt).toLocaleString()}
                             </Text>
                         </View>
                     ))}
@@ -234,32 +191,34 @@ const Message = () => {
                     )}
                 </ScrollView>
 
-                <View className="px-4 py-2 w-full flex-row items-center justify-between">
-                    <TextInput
-                        placeholder={t("Enter your message")}
-                        multiline={true}
-                        placeholderTextColor={'gray'}
-                        className="text-gray-500 text-md border border-gray-200 rounded-full px-5 py-3 flex-1"
-                        style={{ maxHeight: 50 }}
-                        value={messagez.text}
-                        numberOfLines={4}
-                        onChangeText={(e) => setMessage({ ...messagez, text: e })}
-                    />
-                    <TouchableOpacity
-                        activeOpacity={0.7}
-                        className={`${messagez.image_url ? "bg-[#124BCC]" : "bg-gray-200"} opacity-80 rounded-full p-2 ml-2`}
-                        onPress={pickImage}
-                    >
-                        <Entypo name="plus" size={24} color={messagez.image_url ? "white" : "gray"} />
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                        activeOpacity={0.7}
-                        className={`${messagez.image_url !== "" || messagez.text !== "" ? "bg-[#124BCC]" : "bg-gray-200"} opacity-85 rounded-full p-2 ml-2`}
-                        onPress={handleSendMessage}
-                    >
-                        <Entypo name="paper-plane" size={24} color={messagez.image_url !== "" || messagez.text !== "" ? "white" : "gray"} />
-                    </TouchableOpacity>
-                </View>
+                {selectedUser?.role !== "admin" && (
+                    <View className="px-4 py-2 w-full flex-row items-center justify-between">
+                        <TextInput
+                            placeholder={t("Enter your message")}
+                            multiline={true}
+                            placeholderTextColor={'gray'}
+                            className="text-gray-500 text-md border border-gray-200 rounded-full px-5 py-3 flex-1"
+                            style={{ maxHeight: 50 }}
+                            value={messagez.text}
+                            numberOfLines={4}
+                            onChangeText={(e) => setMessage({ ...messagez, text: e })}
+                        />
+                        <TouchableOpacity
+                            activeOpacity={0.7}
+                            className={`${messagez.image_url ? "bg-[#124BCC]" : "bg-gray-200"} opacity-80 rounded-full p-2 ml-2`}
+                            onPress={pickImage}
+                        >
+                            <Entypo name="plus" size={24} color={messagez.image_url ? "white" : "gray"} />
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            activeOpacity={0.7}
+                            className={`${messagez.image_url !== "" || messagez.text !== "" ? "bg-[#124BCC]" : "bg-gray-200"} opacity-85 rounded-full p-2 ml-2`}
+                            onPress={handleSendMessage}
+                        >
+                            <Entypo name="paper-plane" size={24} color={messagez.image_url !== "" || messagez.text !== "" ? "white" : "gray"} />
+                        </TouchableOpacity>
+                    </View>
+                )}
             </KeyboardAvoidingView>
         </SafeAreaView>
     )
