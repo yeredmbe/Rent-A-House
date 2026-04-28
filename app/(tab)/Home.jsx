@@ -11,9 +11,11 @@ import { api } from "../../convex/_generated/api"
 import { useCachedQuery } from '../../hooks/useCachedQuery'
 import { useStore } from '../../Stores/authStore'
 
+
+
 const Home = () => {
   const { user } = useStore()
-  const [refreshing, setRefreshing] = useState(false)
+  // const [refreshing, setRefreshing] = useState(false)
   const [category, setCategory] = useState("All")
   const { t } = useTranslation()
 
@@ -23,9 +25,8 @@ const Home = () => {
 
   const isLoading = HomesData === undefined || recentPosted === undefined;
 
-  const loadData = async () => {
-    // Convex is reactive.
-  }
+
+
 
   const filteredHomes = category === "All"
     ? (HomesData || [])

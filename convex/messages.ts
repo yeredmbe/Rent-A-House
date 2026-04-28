@@ -100,7 +100,6 @@ export const getMessages = query({
     },
 });
 
-// ─── GET CHAT USER LIST (favorites = people you've messaged) ─────────────────
 export const getChatUsers = query({
     args: { userId: v.id("users") },
     handler: async (ctx, args) => {
@@ -108,14 +107,47 @@ export const getChatUsers = query({
         if (!user) return [];
 
         const chatUsers = user.chat_users ?? [];
-        return Promise.all(
+        const result = await Promise.all(
             chatUsers.map(async (favId) => {
                 const favUser = await ctx.db.get(favId);
                 if (!favUser) return null;
                 const { password: _pw, ...safe } = favUser;
-                return safe;
+
+                const sent = await ctx.db
+                    .query("messages")
+                    .withIndex("by_conversation", (q) =>
+                        q.eq("senderId", args.userId).eq("receiverId", favId)
+                    )
+                    .order("desc")
+                    .first();
+
+                const received = await ctx.db
+                    .query("messages")
+                    .withIndex("by_conversation", (q) =>
+                        q.eq("senderId", favId).eq("receiverId", args.userId)
+                    )
+                    .order("desc")
+                    .first();
+
+                const lastMessage = !sent ? received
+                    : !received ? sent
+                        : sent._creationTime > received._creationTime ? sent : received;
+
+                return {
+                    ...safe,
+                    lastMessage: lastMessage
+                        ? { text: lastMessage.text, image_url: lastMessage.image_url, _creationTime: lastMessage._creationTime }
+                        : null,
+                };
             })
         ).then((list) => list.filter(Boolean));
+
+        // FIX: sort by most recent message first
+        return result.sort((a, b) => {
+            const aTime = a.lastMessage?._creationTime ?? 0;
+            const bTime = b.lastMessage?._creationTime ?? 0;
+            return bTime - aTime;
+        });
     },
 });
 

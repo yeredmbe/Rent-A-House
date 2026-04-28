@@ -230,7 +230,7 @@ const DetailPage = () => {
               {user?._id !== Home?.userId && (
                 <View className="mt-4 mb-8 w-full px-2">
                   <TouchableOpacity activeOpacity={0.7} className="bg-[#124BCC] p-3 rounded-full items-center justify-center" onPress={checkUser}>
-                    <Text className="text-white text-lg font-semibold">Message {Home?.userId?.name}</Text>
+                    <Text className="text-white text-lg font-semibold">Send message</Text>
                   </TouchableOpacity>
                 </View>
               )}

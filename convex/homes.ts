@@ -318,6 +318,29 @@ export const toggleFavorite = mutation({
         if (home.userId === args.userId)
             throw new Error("CANNOT_FAVORITE_OWN_HOME");
 
+        const isFav = user.favorites.includes(args.homeId);
+
+        if (isFav) {
+            await ctx.db.patch(args.userId, {
+                favorites: user.favorites.filter((id) => id !== args.homeId),
+            });
+            return { action: "removed" };
+        } else {
+            await ctx.db.patch(args.userId, {
+                favorites: [...user.favorites, args.homeId],
+            });
+
+            // Create notification for home owner
+            await ctx.db.insert("notifications", {
+                senderId: args.userId,
+                receiverId: home.userId,
+                notification_type: "favorites",
+                homeId: args.homeId,
+                isRead: false,
+            });
+
+            return { action: "added" };
+        }
     },
 });
 
