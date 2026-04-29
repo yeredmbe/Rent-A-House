@@ -366,7 +366,8 @@ export const addReview = mutation({
     },
     handler: async (ctx, args) => {
         const home = await ctx.db.get(args.homeId);
-        if (!home) throw new Error("HOME_NOT_FOUND");
+        if (!home) return
+        // throw new Error("HOME_NOT_FOUND");
 
         const reviewId = await ctx.db.insert("reviews", {
             homeId: args.homeId,

@@ -1,34 +1,27 @@
 export const AUTH_ERRORS: Record<string, { title: string; message: string }> = {
-    // ── Register ──────────────────────────────────────────────────────────────
-    USER_EXISTS: {
-        title: 'Account already exists',
-        message: 'An account with this email already exists. Try logging in instead.',
+    "All fields are required": {
+        title: "Missing fields",
+        message: "Please fill in all required fields.",
     },
-    INVALID_EMAIL_FORMAT: {
-        title: 'Invalid email',
-        message: 'Please enter a valid email address.',
+    "Invalid email format": {
+        title: "Invalid email",
+        message: "Please enter a valid email address.",
     },
-    PASSWORD_TOO_SHORT: {
-        title: 'Password too short',
-        message: 'Your password must be at least 6 characters.',
+    "Password must be at least 8 characters": {
+        title: "Password too short",
+        message: "Your password must be at least 8 characters.",
     },
-    NAME_REQUIRED: {
-        title: 'Name required',
-        message: 'Please enter your name to continue.',
+    "User already exists": {
+        title: "Account already exists",
+        message: "An account with this email already exists. Try logging in instead.",
     },
-    TERMS_NOT_AGREED: {
-        title: 'Terms not accepted',
-        message: 'Please agree to our terms and conditions before creating your account.',
+    "Invalid email or password": {
+        title: "Incorrect credentials",
+        message: "The email or password you entered is incorrect. Please try again.",
     },
-
-    // ── Login ─────────────────────────────────────────────────────────────────
-    EMAIL_NOT_FOUND: {
-        title: 'Account not found',
-        message: 'No account found with this email. Check the address or sign up.',
-    },
-    WRONG_PASSWORD: {
-        title: 'Incorrect password',
-        message: "That password doesn't match. Please try again.",
+    "Email and password are required": {
+        title: "Missing fields",
+        message: "Please enter your email and password.",
     },
 
     // ── Generic ───────────────────────────────────────────────────────────────

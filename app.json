@@ -1,7 +1,6 @@
 {
   "expo": {
     "name": "RentAHouse",
-    "displayName": "Rent A House",
     "slug": "Rent-A-House",
     "version": "3.01.0",
     "orientation": "portrait",

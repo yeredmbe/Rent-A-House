@@ -127,7 +127,7 @@ const Home = () => {
               <Text className="text-gray-500">{t("noHomeAvailable")}</Text>
               <TouchableOpacity
                 activeOpacity={0.7}
-                onPress={loadData}
+                onPress={() => setCategory("All")}
                 className="mt-4 bg-[#124BCC] px-4 py-2 rounded-lg"
               >
                 <Text className="text-white">{t("tryAgain")}</Text>

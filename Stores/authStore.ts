@@ -95,10 +95,10 @@ export const useStore = create<AuthState>((set, get) => ({
       });
       const data = await res.json();
 
+      // FIX: return { error } so the component can trigger the modal
       if (!res.ok) {
-        showToast({ message: data.message, type: "error", duration: 4000, position: "top", title: "Error" });
         set({ isLoading: false });
-        return;
+        return { error: data.message ?? "UNKNOWN" };
       }
 
       await AsyncStorage.setItem("token", data.token);
@@ -115,8 +115,9 @@ export const useStore = create<AuthState>((set, get) => ({
       showToast({ message: i18next.t("Registered successfully"), type: "success", duration: 4000, position: "top", title: "Success" });
       return data;
     } catch {
-      showToast({ message: i18next.t("Network issues, try again later."), type: "error", duration: 4000, position: "top", title: "Error" });
       set({ isLoading: false });
+      // FIX: return { error } so the component can trigger the modal
+      return { error: "UNKNOWN" };
     }
   },
 
@@ -130,11 +131,12 @@ export const useStore = create<AuthState>((set, get) => ({
         body: JSON.stringify(credentials),
       });
       const data = await res.json();
+      console.log("login result:", JSON.stringify(res));
 
+      // FIX: return { error } so the component can trigger the modal
       if (!res.ok) {
-        showToast({ message: data.message, type: "error", duration: 4000, position: "top", title: "Error" });
         set({ isLoading: false });
-        return data;
+        return { error: data.message ?? "UNKNOWN" };
       }
 
       await AsyncStorage.setItem("token", data.token);
@@ -151,8 +153,9 @@ export const useStore = create<AuthState>((set, get) => ({
       showToast({ message: i18next.t("Login successful"), type: "success", duration: 4000, position: "top", title: "Success" });
       return data;
     } catch {
-      showToast({ message: i18next.t("Network issues, try again later."), type: "error", duration: 4000, position: "top", title: "Error" });
       set({ isLoading: false });
+      // FIX: return { error } so the component can trigger the modal
+      return { error: "UNKNOWN" };
     }
   },
 
@@ -217,16 +220,12 @@ export const useStore = create<AuthState>((set, get) => ({
     if (!userId) return;
     set({ isLoading: true });
     try {
-      // FIX: build the payload without location if it is null/undefined/empty.
-      // Convex validates location as a strict union — sending null causes
-      // an ArgumentValidationError even if the field is marked optional.
       const payload: Record<string, unknown> = { userId };
 
       if (data.name?.trim()) payload.name = data.name.trim();
       if (data.email?.trim()) payload.email = data.email.trim();
       if (data.age != null) payload.age = data.age;
 
-      // Only include location when it is a non-empty string
       if (data.location && typeof data.location === "string" && data.location.trim()) {
         payload.location = data.location as AllowedLocation;
       }
