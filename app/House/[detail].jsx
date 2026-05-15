@@ -291,7 +291,7 @@ const DetailPage = () => {
           />
 
           <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} className="bg-white" keyboardVerticalOffset={40}>
-            <View className="flex flex-row items-end p-4 my-2">
+            <View className="flex flex-row  items-end p-4 my-2">
               <View className="flex flex-row justify-start items-center flex-1">
                 <Image source={user?.image_url ? { uri: user.image_url } : image.load} className="size-10 rounded-full border" />
                 <TextInput
@@ -299,7 +299,7 @@ const DetailPage = () => {
                   placeholderTextColor='gray'
                   onChangeText={(t) => setText(t)}
                   value={text}
-                  className='border border-gray-200 rounded-full p-2 w-72 android:w-64 ml-3'
+                  className='border border-gray-200 rounded-full p-2 w-5/6 ml-3'
                 />
               </View>
               <TouchableOpacity

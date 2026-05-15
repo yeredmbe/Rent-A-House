@@ -138,7 +138,7 @@ const Post = () => {
     if (
       !formData.category || !formData.description || !formData.price ||
       !formData.city || !formData.address || !formData.home_cover ||
-      !formData.whatsapp_url || !formData.region || !formData.telephone
+      !formData.whatsapp_url || !formData.region || !formData.telephone || formData.telephone ==="+237600000000"
     ) {
       showToast({ message: 'Please fill all required fields', type: 'warning', duration: 5000, position: 'top', title: 'Warning' });
       return;
