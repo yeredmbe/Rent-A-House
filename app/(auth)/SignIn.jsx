@@ -59,13 +59,15 @@ const SignIn = () => {
     setFieldErrors({ email: '', password: '' });
 
     // ── Call store ───────────────────────────────────────────────────────────
-    try {
-      await login(formData);
-      setFormData({ email: '', password: '' });
-    } catch (err) {
-      // err.message should be one of the Convex error codes e.g. "WRONG_PASSWORD"
-      showError(err?.message ?? 'UNKNOWN');
+    // login() never throws — it always returns { error } or the data object.
+    // We check for error here and show the modal accordingly.
+    const res = await login(formData);
+    if (res?.error) {
+      showError(res.error);
+      return;
     }
+
+    setFormData({ email: '', password: '' });
   };
 
   useEffect(() => {

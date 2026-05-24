@@ -1,4 +1,4 @@
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 
 // ─── SEND MESSAGE ─────────────────────────────────────────────────────────────
@@ -11,12 +11,12 @@ export const sendMessage = mutation({
     },
     handler: async (ctx, args) => {
         if (args.senderId === args.receiverId)
-            throw new Error("CANNOT_MESSAGE_SELF");
+            throw new ConvexError("CANNOT_MESSAGE_SELF");
         if (!args.text && !args.image_url)
-            throw new Error("MESSAGE_CONTENT_REQUIRED");
+            throw new ConvexError("MESSAGE_CONTENT_REQUIRED");
 
         const receiver = await ctx.db.get(args.receiverId);
-        if (!receiver) throw new Error("RECEIVER_NOT_FOUND");
+        if (!receiver) throw new ConvexError("RECEIVER_NOT_FOUND");
 
         const messageId = await ctx.db.insert("messages", {
             senderId: args.senderId,
@@ -143,7 +143,7 @@ export const getChatUsers = query({
         ).then((list) => list.filter(Boolean));
 
         // FIX: sort by most recent message first
-        return result.sort((a, b) => {
+        return result.sort(({ a, b }: any) => {
             const aTime = a.lastMessage?._creationTime ?? 0;
             const bTime = b.lastMessage?._creationTime ?? 0;
             return bTime - aTime;
@@ -200,7 +200,7 @@ export const adminBroadcast = mutation({
     },
     handler: async (ctx, args) => {
         if (!args.text && !args.image_url)
-            throw new Error("MESSAGE_CONTENT_REQUIRED");
+            throw new ConvexError("MESSAGE_CONTENT_REQUIRED");
 
         let targets = await ctx.db.query("users").collect();
         targets = targets.filter((u) => u._id !== args.adminId && u.role !== "admin");

@@ -275,32 +275,63 @@ const Search = () => {
         ) : (
           <FlatList
             data={filteredHomes}
-            className="mx-2 bg-gray-100 h-full"
+            className="flex-1"
+            contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 12, gap: 12 }}
             renderItem={({ item }) => (
               <TouchableOpacity
                 onPress={() => router.push(`/House/${item._id}`)}
-                activeOpacity={0.7}
-                className="flex flex-row items-center bg-white p-3 rounded-lg shadow-sm shadow-gray-400 justify-between mx-2 my-1"
+                activeOpacity={0.85}
+                className="bg-white rounded-2xl overflow-hidden shadow-sm shadow-gray-300"
               >
-                <View className="w-full flex flex-row justify-between items-center">
+                {/* Cover Image */}
+                <View className="relative">
                   <Image
                     source={{ uri: item.home_cover }}
-                    className="w-28 h-20 rounded-lg"
+                    className="w-full h-48"
                     resizeMode="cover"
                   />
-                  <View className="flex flex-col justify-between items-end px-3">
-                    <Text className="text-black font-bold text-xl">{item.address}</Text>
-                    <Text className="text-black text-md">{item.category}</Text>
-                    <Text className="text-black text-lg">{formatNumber(item.price)} XAF</Text>
+                  {/* Category Badge */}
+                  <View className="absolute top-3 left-3 bg-white/90 px-3 py-1 rounded-full">
+                    <Text className="text-xs font-semibold text-[#124BCC]">
+                      {item.category}
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Info */}
+                <View className="p-4 flex-row items-center justify-between">
+                  <View className="flex-1 mr-3">
+                    <Text
+                      className="text-base font-bold text-gray-900"
+                      numberOfLines={1}
+                    >
+                      {item.address}
+                    </Text>
+                    <Text className="text-xs text-gray-400 mt-0.5">
+                      {t("ListedProperty")}
+                    </Text>
+                  </View>
+                  <View className="bg-[#124BCC] px-3 py-2 rounded-xl">
+                    <Text className="text-white text-sm font-bold">
+                      {formatNumber(item.price)} XAF
+                    </Text>
                   </View>
                 </View>
               </TouchableOpacity>
             )}
             ListEmptyComponent={() => (
-              <View className="flex flex-col items-center justify-center h-full">
-                <View className="flex flex-row items-center justify-center h-20" />
-                <Image source={icon.result} className="size-44 my-8" tintColor="#d1d5db" />
-                <Text className="text-3xl text-center font-bold text-[#d1d5db]">{t("NoResult")}</Text>
+              <View className="flex-1 items-center justify-center mt-24 px-8">
+                <Image
+                  source={icon.result}
+                  className="w-36 h-36"
+                  tintColor="#e5e7eb"
+                />
+                <Text className="text-2xl font-bold text-gray-200 text-center mt-6">
+                  {t("NoResult")}
+                </Text>
+                <Text className="text-sm text-gray-300 text-center mt-2">
+                  {t("TryAdjustingSearch")}
+                </Text>
               </View>
             )}
             keyExtractor={(item) => item._id}

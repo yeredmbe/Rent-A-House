@@ -1,4 +1,4 @@
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 
 // ─── HELPERS ────────────────────────────────────────────────────────────────
@@ -35,7 +35,7 @@ export const register = mutation({
             .unique();
 
         if (existing) {
-            throw new Error("USER_EXISTS");
+            throw new ConvexError("USER_EXISTS");
         }
 
         const role = args.role ?? "client";
@@ -152,11 +152,11 @@ export const editUser = mutation({
     handler: async (ctx, args) => {
         const { userId, ...fields } = args;
         const user = await ctx.db.get(userId);
-        if (!user) throw new Error("USER_NOT_FOUND");
+        if (!user) throw new ConvexError("USER_NOT_FOUND");
 
         // Validate age
         if (fields.age !== undefined && (fields.age <= 18 || fields.age > 80)) {
-            throw new Error("INVALID_AGE");
+            throw new ConvexError("INVALID_AGE");
         }
 
         const patch: Record<string, unknown> = {};
@@ -167,7 +167,7 @@ export const editUser = mutation({
 
         await ctx.db.patch(userId, patch);
         const updated = await ctx.db.get(userId);
-        if (!updated) throw new Error("USER_NOT_FOUND");
+        if (!updated) throw new ConvexError("USER_NOT_FOUND");
         const { password: _pw, ...safe } = updated;
         return safe;
     },
@@ -182,13 +182,13 @@ export const editProfileImage = mutation({
     },
     handler: async (ctx, args) => {
         const user = await ctx.db.get(args.userId);
-        if (!user) throw new Error("USER_NOT_FOUND");
+        if (!user) throw new ConvexError("USER_NOT_FOUND");
         await ctx.db.patch(args.userId, {
             image_url: args.image_url,
             image_public_id: args.image_public_id,
         });
         const updated = await ctx.db.get(args.userId);
-        if (!updated) throw new Error("USER_NOT_FOUND");
+        if (!updated) throw new ConvexError("USER_NOT_FOUND");
         const { password: _pw, ...safe } = updated;
         return safe;
     },
@@ -255,7 +255,7 @@ export const checkSubscription = query({
     args: { userId: v.id("users") },
     handler: async (ctx, args) => {
         const user = await ctx.db.get(args.userId);
-        if (!user) throw new Error("USER_NOT_FOUND");
+        if (!user) throw new ConvexError("USER_NOT_FOUND");
 
         if (!user.isSubscribed) {
             return { isSubscribed: false, planType: "free" };

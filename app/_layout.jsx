@@ -8,7 +8,12 @@ import { Toaster } from 'rn-snappy-toast';
 import NotificationProvider from '../components/notificationProvider';
 import '../global.css';
 import { initLanguage } from '../Services/i18next';
+import { LogBox } from 'react-native';
 
+LogBox.ignoreLogs([
+  '[CONVEX', 
+  'ConvexError', 
+]);
 
 SplashScreen.preventAutoHideAsync();
 

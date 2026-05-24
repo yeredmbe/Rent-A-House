@@ -1,4 +1,4 @@
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 
 // ─── GET NOTIFICATIONS FOR A USER ────────────────────────────────────────────
@@ -81,8 +81,8 @@ export const deleteNotification = mutation({
     },
     handler: async (ctx, args) => {
         const notif = await ctx.db.get(args.notificationId);
-        if (!notif) throw new Error("NOTIFICATION_NOT_FOUND");
-        if (notif.receiverId !== args.userId) throw new Error("UNAUTHORIZED");
+        if (!notif) throw new ConvexError("NOTIFICATION_NOT_FOUND");
+        if (notif.receiverId !== args.userId) throw new ConvexError("UNAUTHORIZED");
         await ctx.db.delete(args.notificationId);
         return { success: true };
     },

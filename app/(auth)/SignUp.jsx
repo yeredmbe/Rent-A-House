@@ -94,17 +94,20 @@ const SignUp = () => {
         setFieldErrors({ name: '', email: '', password: '' });
 
         // ── Call store ───────────────────────────────────────────────────────────
-        try {
-            const res = await register({ ...formData });
+        // register() never throws — it always returns { error } or the data object.
+        // We check for error here and show the modal accordingly.
+        const res = await register({ ...formData });
 
-            if (res?.user?._id) {
-                await registerForPushNotificationsAsync(res.user._id);
-            }
-
-            setFormData({ name: '', email: '', password: '', role: 'client' });
-        } catch (err) {
-            showError(err?.message ?? 'UNKNOWN');
+        if (res?.error) {
+            showError(res.error);
+            return;
         }
+
+        if (res?.user?._id) {
+            await registerForPushNotificationsAsync(res.user._id);
+        }
+
+        setFormData({ name: '', email: '', password: '', role: 'client' });
     };
 
     async function registerForPushNotificationsAsync(userId) {

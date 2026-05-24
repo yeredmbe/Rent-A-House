@@ -1,12 +1,10 @@
+
 /**
  * convex/http.ts
  *
- * Thin HTTP layer that replaces your Express server for auth endpoints.
- * Password hashing and JWT signing happen here (Convex actions support Node.js
- * built-ins via "use node" directive).
- *
- * All other data operations use Convex mutations/queries directly from the
- * React Native client — no HTTP needed.
+ * "use node" is REQUIRED — bcryptjs and jose need Node.js built-ins
+ * (crypto, Buffer) which are unavailable in Convex's default V8 isolate.
+ * Without this directive Convex will NOT register the HTTP routes.
  */
 
 import bcrypt from "bcryptjs";
@@ -51,18 +49,17 @@ function json(data: unknown, status = 200) {
 // ─── REGISTER ─────────────────────────────────────────────────────────────────
 const registerHandler = httpAction(async (ctx, req) => {
     const body = await req.json();
-    const { name, email, password, role, ExpoPushToken } = body;
+    const { name, email, password, role } = body;
 
     if (!name || !email || !password) {
-        return json({ message: "All fields are required" }, 400);
+        return json({ message: "All fields are required", code: "MISSING_FIELDS" }, 400);
     }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-        return json({ message: "Invalid email format" }, 400);
+        return json({ message: "Invalid email format", code: "INVALID_EMAIL" }, 400);
     }
-    if (password.length < 8) {
-        return json({ message: "Password must be at least 8 characters" }, 400);
+    if (password.length < 6) {
+        return json({ message: "Password must be at least 6 characters", code: "WEAK_PASSWORD" }, 400);
     }
-
     const hashedPassword = await bcrypt.hash(password, 10);
 
     let result: { userId: string; messageId?: string };
@@ -72,14 +69,15 @@ const registerHandler = httpAction(async (ctx, req) => {
             email,
             password: hashedPassword,
             role,
-            // ExpoPushToken,
         });
     } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : String(err);
-        if (msg === "USER_EXISTS") {
-            return json({ message: "User already exists" }, 400);
+        // Convex wraps errors: "[CONVEX M(...)] ConvexError: USER_EXISTS"
+        if (msg.includes("USER_EXISTS")) {
+            return json({ message: "User already exists", code: "USER_EXISTS" }, 400);
         }
-        throw err;
+        console.error("[http] register error:", msg);
+        return json({ message: "Something went wrong", code: "UNKNOWN" }, 500);
     }
 
     const token = await signToken(result.userId);
@@ -94,14 +92,14 @@ const loginHandler = httpAction(async (ctx, req) => {
     const { email, password } = body;
 
     if (!email || !password) {
-        return json({ message: "Email and password are required" }, 400);
+        return json({ message: "Email and password are required", code: "MISSING_FIELDS" }, 400);
     }
 
     const user = await ctx.runQuery(api.users.getUserByEmail, { email });
-    if (!user) return json({ message: "Invalid email or password" }, 400);
+    if (!user) return json({ message: "Invalid email or password", code: "Invalid email or password" }, 400);
 
     const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) return json({ message: "Invalid email or password" }, 400);
+    if (!isMatch) return json({ message: "Invalid email or password", code: "Invalid email or password" }, 400);
 
     const token = await signToken(user._id);
     const { password: _pw, ...safeUser } = user;
@@ -113,7 +111,7 @@ const loginHandler = httpAction(async (ctx, req) => {
 const http = httpRouter();
 
 http.route({ path: "/api/v1/user/register", method: "POST", handler: registerHandler });
-http.route({ path: "/api/v1/user/login", method: "POST", handler: loginHandler });
+http.route({ path: "/api/v1/user/login",    method: "POST", handler: loginHandler });
 
 // OPTIONS preflight (mobile clients may send these)
 http.route({

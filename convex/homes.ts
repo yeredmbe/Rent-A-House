@@ -1,4 +1,4 @@
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 
 // ─── SHARED REGION/CATEGORY VALIDATORS ──────────────────────────────────────
@@ -51,20 +51,17 @@ export const createHome = mutation({
         long: v.optional(v.string()),
     },
     handler: async (ctx, args) => {
-        if (args.price <= 5000) throw new Error("PRICE_TOO_LOW");
-        if (args.details.length < 3 || args.details.length > 10) return
-        // throw new Error("INVALID_DETAILS_COUNT");
+        if (args.price <= 5000) throw new ConvexError("PRICE_TOO_LOW");
+        if (args.details.length < 3 || args.details.length > 10)
+            throw new ConvexError("INVALID_DETAILS_COUNT");
 
         const phoneRegex = /^[0-9]{9,15}$/;
-        if (!phoneRegex.test(args.telephone.replace(/\D/g, ""))) return
-        // throw new Error("INVALID_PHONE");
+        if (!phoneRegex.test(args.telephone.replace(/\D/g, "")))
+            throw new ConvexError("INVALID_PHONE");
 
-        const whatsappRegex = /^(https?:\/\/)?(wa\.me|api\.whatsapp\.com|chat\.whatsapp\.com)\/.+/i;
-        if (!whatsappRegex.test(args.whatsapp_url.trim())) return
-        //  {
-        //     throw new Error("INVALID_WHATSAPP_LINK");
-        // }
-
+       const whatsappRegex = /^(https?:\/\/)?(wa\.me|api\.whatsapp\.com|chat\.whatsapp\.com)\/.+/i;
+       if (!whatsappRegex.test(args.whatsapp_url.trim()))
+         throw new ConvexError("INVALID_WHATSAPP_LINK");
         const homeId = await ctx.db.insert("homes", {
             userId: args.userId,
             address: args.address,
@@ -261,11 +258,19 @@ export const updateHome = mutation({
     },
     handler: async (ctx, args) => {
         const home = await ctx.db.get(args.homeId);
-        if (!home) throw new Error("HOME_NOT_FOUND");
-        if (home.userId !== args.userId) throw new Error("UNAUTHORIZED");
-        if (args.price <= 5000) throw new Error("PRICE_TOO_LOW");
+        if (!home) throw new ConvexError("HOME_NOT_FOUND");
+        if (home.userId !== args.userId) throw new ConvexError("UNAUTHORIZED");
+        if (args.price <= 5000) throw new ConvexError("PRICE_TOO_LOW");
         if (args.details.length < 3 || args.details.length > 10)
-            throw new Error("INVALID_DETAILS_COUNT");
+            throw new ConvexError("INVALID_DETAILS_COUNT");
+
+        const phoneRegex = /^[0-9]{9,15}$/;
+        if (!phoneRegex.test(args.telephone.replace(/\D/g, "")))
+            throw new ConvexError("INVALID_PHONE");
+
+        const whatsappRegex = /^(https?:\/\/)?(wa\.me|api\.whatsapp\.com|chat\.whatsapp\.com)\/.+/i;
+        if (!whatsappRegex.test(args.whatsapp_url.trim()))
+            throw new ConvexError("INVALID_WHATSAPP_LINK");
 
         const { homeId, userId: _uid, ...fields } = args;
         await ctx.db.patch(homeId, fields);
@@ -278,8 +283,8 @@ export const deleteHome = mutation({
     args: { homeId: v.id("homes"), userId: v.id("users") },
     handler: async (ctx, args) => {
         const home = await ctx.db.get(args.homeId);
-        if (!home) throw new Error("HOME_NOT_FOUND");
-        if (home.userId !== args.userId) throw new Error("UNAUTHORIZED");
+        if (!home) throw new ConvexError("HOME_NOT_FOUND");
+        if (home.userId !== args.userId) throw new ConvexError("UNAUTHORIZED");
 
         // Clean up related reviews
         const reviews = await ctx.db
@@ -298,8 +303,8 @@ export const toggleAvailability = mutation({
     args: { homeId: v.id("homes"), userId: v.id("users") },
     handler: async (ctx, args) => {
         const home = await ctx.db.get(args.homeId);
-        if (!home) throw new Error("HOME_NOT_FOUND");
-        if (home.userId !== args.userId) throw new Error("UNAUTHORIZED");
+        if (!home) throw new ConvexError("HOME_NOT_FOUND");
+        if (home.userId !== args.userId) throw new ConvexError("UNAUTHORIZED");
         await ctx.db.patch(args.homeId, { isAvailable: !home.isAvailable });
         return await ctx.db.get(args.homeId);
     },
@@ -310,13 +315,13 @@ export const toggleFavorite = mutation({
     args: { homeId: v.id("homes"), userId: v.id("users") },
     handler: async (ctx, args) => {
         const user = await ctx.db.get(args.userId);
-        if (!user) throw new Error("USER_NOT_FOUND");
+        if (!user) throw new ConvexError("USER_NOT_FOUND");
 
         const home = await ctx.db.get(args.homeId);
-        if (!home) throw new Error("HOME_NOT_FOUND");
+        if (!home) throw new ConvexError("HOME_NOT_FOUND");
 
         if (home.userId === args.userId)
-            throw new Error("CANNOT_FAVORITE_OWN_HOME");
+            throw new ConvexError("CANNOT_FAVORITE_OWN_HOME");
 
         const isFav = user.favorites.includes(args.homeId);
 
@@ -367,7 +372,7 @@ export const addReview = mutation({
     handler: async (ctx, args) => {
         const home = await ctx.db.get(args.homeId);
         if (!home) return
-        // throw new Error("HOME_NOT_FOUND");
+        // throw new ConvexError("HOME_NOT_FOUND");
 
         const reviewId = await ctx.db.insert("reviews", {
             homeId: args.homeId,

@@ -5,12 +5,14 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { ActivityIndicator, Dimensions, FlatList, Image, ImageBackground, KeyboardAvoidingView, Linking, Modal, Platform, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { showToast } from 'rn-snappy-toast';
+import { AuthErrorModal } from '../../components/AuthErrorModal';
 import icons from '../../constant/icons';
 import image from '../../constant/image';
 import { api } from "../../convex/_generated/api";
 import { useCachedQuery } from '../../hooks/useCachedQuery';
 import { useStore } from '../../Stores/authStore';
 import { messageStore } from '../../Stores/messageStore';
+import { getAuthError } from '../lib/AuthErrors';
 
 function formatNumber(number) {
   const numStr = Number(number).toString();
@@ -57,16 +59,27 @@ const DetailPage = () => {
   const [text, setText] = useState("");
   const [isClicked, setIsClicked] = useState(false);
 
+  const [modal, setModal] = useState({ visible: false, title: '', message: '' });
+
+  const showError = (code) => {
+    const { title, message } = getAuthError(code);
+    setModal({ visible: true, title, message });
+  };
+
   const handleSendMessage = async () => {
-    if (!text.trim()) return;
+    if (!text.trim() || isClicked) return;
     setIsClicked(true);
-    if (isClicked) return;
-    // BUG FIX: pass homeId and userId correctly — addReview only needs homeId + text
-    // userId was being passed but the Convex mutation resolves it server-side
-    await addReviewMutation({ homeId: Home?._id, userId: user?._id, text });
-    setText("");
-    setIsOpen(false);
-    setIsClicked(false);
+    try {
+      // BUG FIX: pass homeId and userId correctly — addReview only needs homeId + text
+      // userId was being passed but the Convex mutation resolves it server-side
+      await addReviewMutation({ homeId: Home?._id, userId: user?._id, text });
+      setText("");
+      setIsOpen(false);
+    } catch (err) {
+      showError(err?.data ?? err?.message ?? 'UNKNOWN');
+    } finally {
+      setIsClicked(false);
+    }
   };
 
   const checkUser = () => {
@@ -89,7 +102,7 @@ const DetailPage = () => {
         animationType: 'slide', progressBar: true, richColors: true,
       });
     } catch (err) {
-      console.log(err.message);
+      showError(err?.data ?? err?.message ?? 'UNKNOWN');
     } finally {
       setIsLoading(false);
     }
@@ -97,6 +110,12 @@ const DetailPage = () => {
 
   return (
     <View className="flex-1 bg-white">
+      <AuthErrorModal
+        visible={modal.visible}
+        title={modal.title}
+        message={modal.message}
+        onClose={() => setModal((m) => ({ ...m, visible: false }))}
+      />
       <View className="flex-1 relative">
         <FlatList
           data={Home?.details}

@@ -22,7 +22,7 @@ const Message = () => {
     });
     const { selectedUser } = messageStore()
     const { user } = useStore()
-    const { message } = useLocalSearchParams()
+    const { message} = useLocalSearchParams()
     const scrollRef = useRef();
     const { t } = useTranslation()
 
@@ -324,7 +324,7 @@ const Message = () => {
                 </View>
 
                 {/* Input bar */}
-                {selectedUser?.role !== "admin" && (
+                {selectedUser?.role !== "admin" || selectedUser?._id !=="jn7aq3m0g00px4wnhr3dhp6cxs85gpdz" && (
                     <View
                         className="px-3 py-2 bg-white border-t border-gray-100 flex-row items-end"
                         style={{ elevation: 4, shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 6, shadowOffset: { width: 0, height: -1 } }}

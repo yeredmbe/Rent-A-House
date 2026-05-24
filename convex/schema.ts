@@ -7,6 +7,7 @@ export default defineSchema({
         email: v.string(),
         password: v.string(), // bcrypt hashed
         age: v.optional(v.number()),
+        isActive: v.optional(v.boolean()),
         location: v.optional(
             v.union(
                 v.literal("Bafoussam"),

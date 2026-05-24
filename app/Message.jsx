@@ -57,7 +57,7 @@ const Message = () => {
               if (user?._id) {
                 markAsRead({ senderId: item._id, receiverId: user._id }).catch(console.error);
               }
-              router.push(`/Message/${item._id}`)
+              router.push(`/Message/${item._id}`, { role: item.role })
             }}
             className={`flex-row items-center rounded-2xl mb-3 p-3 bg-white`}
             style={{ elevation: 1, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 4, shadowOffset: { width: 0, height: 1 } }}
