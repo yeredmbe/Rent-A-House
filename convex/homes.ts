@@ -698,6 +698,13 @@ export const adminDeleteHome = mutation({
   },
 
   handler: async (ctx, { homeId }) => {
+    // Clean up related reviews
+    const reviews = await ctx.db
+      .query("reviews")
+      .withIndex("by_homeId", (q) => q.eq("homeId", homeId))
+      .collect();
+    for (const r of reviews) await ctx.db.delete(r._id);
+
     await ctx.db.delete(homeId);
 
     return {

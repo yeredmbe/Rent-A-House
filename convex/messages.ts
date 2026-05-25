@@ -138,7 +138,7 @@ export const getChatUsers = query({
                     .withIndex("by_conversation", (q) =>
                         q.eq("senderId", favId).eq("receiverId", args.userId)
                     )
-                    .filter((q) => q.eq(q.field("isRead"), false))
+                   .filter((q) => q.eq(q.field("readByReceiver"), false))
                     .collect()
                     .then((msgs) => msgs.length);
 

@@ -17,15 +17,16 @@ export const getStats = query({
     return {
       users: {
         total: users.length,
-        landlords: users.filter((u) => u.role === "landlord").length,
+        landlords: users.filter((u) => u.role === "landLord").length,
         clients: users.filter((u) => u.role === "client").length,
-        newThisMonth: users.filter((u) => u.createdAt >= thirtyDaysAgo).length,
+        newThisMonth: users.filter((u) => (u.createdAt ?? u._creationTime) >= thirtyDaysAgo).length,
       },
       homes: {
         total: homes.length,
-        available: homes.filter((h) => h.status === "available").length,
-        rented: homes.filter((h) => h.status === "rented").length,
-        pending: homes.filter((h) => h.status === "pending").length,
+        available: homes.filter((h) => h.isAvailable).length,
+        unavailable: homes.filter((h) => !h.isAvailable).length,
+        approved: homes.filter((h) => h.isApproved).length,
+        pending: homes.filter((h) => !h.isApproved).length,
       },
       messages: {
         total: broadcasts.length,

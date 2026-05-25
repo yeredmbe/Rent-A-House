@@ -313,7 +313,7 @@ export const listLandlords = query({
   handler: async (ctx) => {
     return await ctx.db
       .query("users")
-      .withIndex("by_role", (q) => q.eq("role", "landlord"))
+      .withIndex("by_role", (q) => q.eq("role", "landLord"))
       .collect();
   },
 });
@@ -337,7 +337,7 @@ export const countByRole = query({
     return {
       total: all.length,
       admins: all.filter((u) => u.role === "admin").length,
-      landlords: all.filter((u) => u.role === "landlord").length,
+      landlords: all.filter((u) => u.role === "landLord").length,
       clients: all.filter((u) => u.role === "client").length,
     };
   },
@@ -347,7 +347,10 @@ export const countByRole = query({
 export const getUserById = query({
   args: { userId: v.id("users") },
   handler: async (ctx, { userId }) => {
-    return await ctx.db.get(userId);
+    const user = await ctx.db.get(userId);
+    if (!user) return null;
+    const { password: _pw, ...safe } = user;
+    return safe;
   },
 });
 
@@ -356,7 +359,7 @@ export const upsertUser = mutation({
   args: {
     name: v.string(),
     email: v.string(),
-    role: v.union(v.literal("admin"), v.literal("landlord"), v.literal("client")),
+    role: v.union(v.literal("admin"), v.literal("landLord"), v.literal("client")),
     phone: v.optional(v.string()),
     clerkId: v.optional(v.string()),
   },
