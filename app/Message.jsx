@@ -44,7 +44,7 @@ const Message = () => {
 
       <FlatList
         data={chatUsers ?? []}
-        keyExtractor={(item) => item._id.toString()}
+        keyExtractor={(item, index) => item?._id?.toString() ?? index.toString()}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ flexGrow: 1, paddingVertical: 12, paddingHorizontal: 12 }}
         onRefresh={() => { }}
@@ -57,7 +57,10 @@ const Message = () => {
               if (user?._id) {
                 markAsRead({ senderId: item._id, receiverId: user._id }).catch(console.error);
               }
-              router.push(`/Message/${item._id}`, { role: item.role })
+              // FIX: router.push does not accept a second argument in Expo Router.
+              // Passing { role } as a second arg crashes the app in production.
+              // role is already stored in messageStore via setSelectedUser(item) above.
+              router.push(`/Message/${item._id}`)
             }}
             className={`flex-row items-center rounded-2xl mb-3 p-3 bg-white`}
             style={{ elevation: 1, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 4, shadowOffset: { width: 0, height: 1 } }}
@@ -93,7 +96,7 @@ const Message = () => {
                     {item.lastMessage?.text || t("newMessage")}
                   </Text>
                 )}
-                {item.unreadCount > 0 && (
+                {(item.unreadCount ?? 0) > 0 && (
                   <View className="bg-[#124BCC] rounded-full size-5 items-center justify-center ml-2">
                     <Text className="text-white text-xs font-bold">{item.unreadCount}</Text>
                   </View>

@@ -165,18 +165,19 @@ const Search = () => {
         )}
 
         <View className="flex relative">
+          {/* FIX: single TouchableOpacity wrapping both icon and badge.
+              Previously two sibling TouchableOpacity elements could both fire
+              when the badge overlapped the icon, causing double navigation. */}
           <TouchableOpacity activeOpacity={0.7} onPress={() => router.push("/Message")}>
             <Entypo name="message" size={28} color="gray" />
+            {count > 0 && (
+              <View
+                className="absolute -top-1 right-0 bg-red-500 rounded-full py-1 px-[5px] max-w-9 flex flex-row items-center justify-center"
+              >
+                <Text className="text-white text-center text-xs">{count > 10 ? "9+" : count}</Text>
+              </View>
+            )}
           </TouchableOpacity>
-          {count > 0 && (
-            <TouchableOpacity
-              activeOpacity={0.7}
-              onPress={() => router.push("/Message")}
-              className="absolute -top-1 right-0 bg-red-500 rounded-full py-1 px-[5px] max-w-9 flex flex-row items-center justify-center"
-            >
-              <Text className="text-white text-center text-xs">{count > 10 ? "9+" : count}</Text>
-            </TouchableOpacity>
-          )}
         </View>
       </View>
 

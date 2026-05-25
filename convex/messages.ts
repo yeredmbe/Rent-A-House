@@ -133,8 +133,18 @@ export const getChatUsers = query({
                     : !received ? sent
                         : sent._creationTime > received._creationTime ? sent : received;
 
+                const unreadCount = await ctx.db
+                    .query("messages")
+                    .withIndex("by_conversation", (q) =>
+                        q.eq("senderId", favId).eq("receiverId", args.userId)
+                    )
+                    .filter((q) => q.eq(q.field("isRead"), false))
+                    .collect()
+                    .then((msgs) => msgs.length);
+
                 return {
                     ...safe,
+                    unreadCount,
                     lastMessage: lastMessage
                         ? { text: lastMessage.text, image_url: lastMessage.image_url, _creationTime: lastMessage._creationTime }
                         : null,
@@ -142,8 +152,8 @@ export const getChatUsers = query({
             })
         ).then((list) => list.filter(Boolean));
 
-        // FIX: sort by most recent message first
-        return result.sort(({ a, b }: any) => {
+        // FIX: correct sort syntax with two separate parameters
+        return result.sort((a: any, b: any) => {
             const aTime = a.lastMessage?._creationTime ?? 0;
             const bTime = b.lastMessage?._creationTime ?? 0;
             return bTime - aTime;
@@ -235,4 +245,118 @@ export const adminBroadcast = mutation({
 
         return { sent: targets.length };
     },
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// ─── DASHBOARD-ONLY FUNCTIONS ─────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// ── Broadcast Messages ────────────────────────────────────────────────────────
+
+/** List all broadcast messages */
+export const listBroadcasts = query({
+  args: {},
+  handler: async (ctx) => {
+    const messages = await ctx.db
+      .query("broadcastMessages")
+      .withIndex("by_sentAt")
+      .order("desc")
+      .collect();
+    return await Promise.all(
+      messages.map(async (msg) => {
+        const sender = await ctx.db.get(msg.senderId);
+        return { ...msg, sender };
+      })
+    );
+  },
+});
+
+/** Send a broadcast message to all / landlords / clients */
+export const sendBroadcast = mutation({
+  args: {
+    title: v.string(),
+    content: v.string(),
+    senderId: v.id("users"),
+    recipientType: v.union(
+      v.literal("all"),
+      v.literal("landlords"),
+      v.literal("clients")
+    ),
+  },
+  handler: async (ctx, args) => {
+    return await ctx.db.insert("broadcastMessages", {
+      ...args,
+      sentAt: Date.now(),
+    });
+  },
+});
+
+/** Delete a broadcast message */
+export const deleteBroadcast = mutation({
+  args: { messageId: v.id("broadcastMessages") },
+  handler: async (ctx, { messageId }) => {
+    await ctx.db.delete(messageId);
+  },
+});
+
+// ── Direct Messages ───────────────────────────────────────────────────────────
+
+/** List direct messages for a recipient */
+export const listDirectMessages = query({
+  args: { recipientId: v.id("users") },
+  handler: async (ctx, { recipientId }) => {
+    return await ctx.db
+      .query("directMessages")
+      .withIndex("by_recipient", (q) => q.eq("recipientId", recipientId))
+      .order("desc")
+      .collect();
+  },
+});
+
+/** All direct messages sent by a user */
+export const listSentMessages = query({
+  args: { senderId: v.id("users") },
+  handler: async (ctx, { senderId }) => {
+    return await ctx.db
+      .query("directMessages")
+      .withIndex("by_sender", (q) => q.eq("senderId", senderId))
+      .order("desc")
+      .collect();
+  },
+});
+
+/** Send a direct message */
+export const sendDirectMessage = mutation({
+  args: {
+    content: v.string(),
+    senderId: v.id("users"),
+    recipientId: v.id("users"),
+  },
+  handler: async (ctx, args) => {
+    return await ctx.db.insert("directMessages", {
+      ...args,
+      isRead: false,
+      sentAt: Date.now(),
+    });
+  },
+});
+
+/** Mark message as read */
+export const markAsRead = mutation({
+  args: { messageId: v.id("directMessages") },
+  handler: async (ctx, { messageId }) => {
+    await ctx.db.patch(messageId, { isRead: true });
+  },
+});
+
+/** Count unread messages for a user */
+export const countUnread = query({
+  args: { recipientId: v.id("users") },
+  handler: async (ctx, { recipientId }) => {
+    const msgs = await ctx.db
+      .query("directMessages")
+      .withIndex("by_recipient", (q) => q.eq("recipientId", recipientId))
+      .collect();
+    return msgs.filter((m) => !m.isRead).length;
+  },
 });

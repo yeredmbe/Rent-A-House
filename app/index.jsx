@@ -1,6 +1,6 @@
 import { Entypo } from "@expo/vector-icons";
 import { router } from "expo-router";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ActivityIndicator, Dimensions, FlatList, Image, Platform, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -12,6 +12,19 @@ export default function Index() {
   const scrollRef = React.useRef();
   const { t } = useTranslation()
 
+  // FIX: restoreSession updates `user` TWICE:
+  //   1. Immediately from AsyncStorage cache
+  //   2. ~1 second later from Convex background validation
+  // Without this guard, router.replace("/Home") fires a second time while the
+  // user is already on another screen (e.g. /Message), pulling them back to Home.
+  const hasNavigated = useRef(false);
+
+  useEffect(() => {
+    if (user && !hasNavigated.current) {
+      hasNavigated.current = true;
+      router.replace("/Home");
+    }
+  }, [user]);
 
   const Images = [
     { id: 0, src: require("../assets/images/House-searching-amico.png") },
@@ -19,15 +32,6 @@ export default function Index() {
     { id: 2, src: require("../assets/images/House-searching-bro.png") },
     { id: 3, src: require("../assets/images/House-searching-pana.png") },
   ]
-
-
-
-
-  useEffect(() => {
-    if (user) {
-      router.replace("/Home");
-    }
-  }, [user]);
 
   if (isLoading) {
     return (
@@ -57,24 +61,16 @@ export default function Index() {
               <Image source={item.src} className="w-full h-full" resizeMode="contain" />
             </View>
           )}
-          keyExtractor={(item) => item.id}
+          keyExtractor={(item) => item.id.toString()}
         />
       </View>
 
-      {/*  {currentIndex > 0 && (
-        <TouchableOpacity onPress={() => {scrollRef.current.scrollToOffset({ offset: (parseInt(currentIndex )- 1) * Dimensions.get("window").width, animated: true })}} activeOpacity={0.7} className=" flex flex-row items-center justify-start bg-[#124BCC]  rounded-lg px-5 py-2 absolute bottom-12 left-9">
-          <Entypo name="chevron-left" size={30} color="white" />
-          <Text className="text-white">Previous</Text>
-        </TouchableOpacity> 
-      )}
-*/}
       {currentIndex === (Images.length - 1).toString() && (
         <TouchableOpacity onPress={() => router.push("/(auth)/SignUp")} activeOpacity={0.7} className=" flex flex-row items-center justify-start bg-[#124BCC] rounded-lg px-5 py-2 absolute bottom-12 right-9">
           <Text className="text-white">{t("Continue")}</Text>
           <Entypo name="chevron-right" size={30} color="white" />
         </TouchableOpacity>
       )}
-      {/* this is the bullet section */}
 
       <View className={`flex-row ${Platform.OS === 'android' ? 'mb-6' : 'mb-4'}`}>
         {Images.map((item, index) => (

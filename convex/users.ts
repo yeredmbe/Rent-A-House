@@ -286,3 +286,109 @@ export const resetSubscription = mutation({
         });
     },
 });
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// ─── DASHBOARD-ONLY FUNCTIONS ─────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/** All non-admin users (for dashboard user table) */
+export const listNonAdminUsers = query({
+  args: {},
+  handler: async (ctx) => {
+    const landlords = await ctx.db
+      .query("users")
+      .withIndex("by_role", (q) => q.eq("role", "landLord"))
+      .collect();
+    const clients = await ctx.db
+      .query("users")
+      .withIndex("by_role", (q) => q.eq("role", "client"))
+      .collect();
+    return [...landlords, ...clients].sort((a, b) => b._creationTime - a._creationTime);
+  },
+});
+
+/** All landlords */
+export const listLandlords = query({
+  args: {},
+  handler: async (ctx) => {
+    return await ctx.db
+      .query("users")
+      .withIndex("by_role", (q) => q.eq("role", "landlord"))
+      .collect();
+  },
+});
+
+/** All clients */
+export const listClients = query({
+  args: {},
+  handler: async (ctx) => {
+    return await ctx.db
+      .query("users")
+      .withIndex("by_role", (q) => q.eq("role", "client"))
+      .collect();
+  },
+});
+
+/** Count users by role */
+export const countByRole = query({
+  args: {},
+  handler: async (ctx) => {
+    const all = await ctx.db.query("users").collect();
+    return {
+      total: all.length,
+      admins: all.filter((u) => u.role === "admin").length,
+      landlords: all.filter((u) => u.role === "landlord").length,
+      clients: all.filter((u) => u.role === "client").length,
+    };
+  },
+});
+
+/** Get single user by id (dashboard variant) */
+export const getUserById = query({
+  args: { userId: v.id("users") },
+  handler: async (ctx, { userId }) => {
+    return await ctx.db.get(userId);
+  },
+});
+
+/** Create/upsert a user */
+export const upsertUser = mutation({
+  args: {
+    name: v.string(),
+    email: v.string(),
+    role: v.union(v.literal("admin"), v.literal("landlord"), v.literal("client")),
+    phone: v.optional(v.string()),
+    clerkId: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const existing = await ctx.db
+      .query("users")
+      .withIndex("by_email", (q) => q.eq("email", args.email))
+      .unique();
+    if (existing) {
+      await ctx.db.patch(existing._id, { name: args.name, phone: args.phone });
+      return existing._id;
+    }
+    return await ctx.db.insert("users", {
+      ...args,
+      isActive: true,
+      createdAt: Date.now(),
+    });
+  },
+});
+
+/** Toggle user active status */
+export const toggleUserActive = mutation({
+  args: { userId: v.id("users"), isActive: v.boolean() },
+  handler: async (ctx, { userId, isActive }) => {
+    await ctx.db.patch(userId, { isActive });
+  },
+});
+
+/** Delete a user */
+export const deleteUser = mutation({
+  args: { userId: v.id("users") },
+  handler: async (ctx, { userId }) => {
+    await ctx.db.delete(userId);
+  },
+});

@@ -2,6 +2,7 @@ import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
 export default defineSchema({
+    // ── Users ─────────────────────────────────────────────────────────────────
     users: defineTable({
         name: v.string(),
         email: v.string(),
@@ -40,11 +41,17 @@ export default defineSchema({
         subscriptionDueDate: v.optional(v.number()), // Unix ms
         subscriptionExpiryDate: v.optional(v.number()), // Unix ms
         ExpoPushToken: v.optional(v.string()),
+
+        // ── Added for admin dashboard compatibility (optional) ──────────────
+        phone: v.optional(v.string()),
+        profileImage: v.optional(v.string()),
+        createdAt: v.optional(v.number()),
     })
         .index("by_email", ["email"])
         .index("by_role", ["role"])
         .index("by_location", ["location"]),
 
+    // ── Homes ─────────────────────────────────────────────────────────────────
     homes: defineTable({
         userId: v.id("users"),
         city: v.string(),
@@ -95,6 +102,7 @@ export default defineSchema({
         .index("by_available", ["isAvailable"])
         .index("by_region_available", ["region", "isAvailable"]),
 
+    // ── Reviews ───────────────────────────────────────────────────────────────
     reviews: defineTable({
         homeId: v.id("homes"),
         userId: v.id("users"),
@@ -103,6 +111,7 @@ export default defineSchema({
         .index("by_homeId", ["homeId"])
         .index("by_userId", ["userId"]),
 
+    // ── Messages (app direct messages) ────────────────────────────────────────
     messages: defineTable({
         senderId: v.id("users"),
         receiverId: v.id("users"),
@@ -113,9 +122,9 @@ export default defineSchema({
     })
         .index("by_senderId", ["senderId"])
         .index("by_receiverId", ["receiverId"])
-        // composite index for conversation lookup
         .index("by_conversation", ["senderId", "receiverId"]),
 
+    // ── Notifications ─────────────────────────────────────────────────────────
     notifications: defineTable({
         senderId: v.id("users"),
         receiverId: v.id("users"),
@@ -136,4 +145,47 @@ export default defineSchema({
     })
         .index("by_receiverId", ["receiverId"])
         .index("by_receiverId_isRead", ["receiverId", "isRead"]),
+
+    // ── Broadcast Messages (admin → user segments) ────────────────────────────
+    broadcastMessages: defineTable({
+        title: v.string(),
+        content: v.string(),
+        senderId: v.id("users"),
+        recipientType: v.union(
+            v.literal("all"),
+            v.literal("landlords"),
+            v.literal("clients")
+        ),
+        sentAt: v.number(),
+    }).index("by_sentAt", ["sentAt"]),
+
+    // ── Admin Direct Messages ─────────────────────────────────────────────────
+    directMessages: defineTable({
+        content: v.string(),
+        senderId: v.id("users"),
+        recipientId: v.id("users"),
+        isRead: v.boolean(),
+        sentAt: v.number(),
+    })
+        .index("by_recipient", ["recipientId"])
+        .index("by_sender", ["senderId"]),
+
+    // ── Rentals ───────────────────────────────────────────────────────────────
+    rentals: defineTable({
+        homeId: v.id("homes"),
+        tenantId: v.id("users"),
+        landlordId: v.id("users"),
+        startDate: v.number(),
+        endDate: v.optional(v.number()),
+        monthlyRent: v.number(),
+        status: v.union(
+            v.literal("active"),
+            v.literal("ended"),
+            v.literal("pending")
+        ),
+        createdAt: v.number(),
+    })
+        .index("by_tenant", ["tenantId"])
+        .index("by_landlord", ["landlordId"])
+        .index("by_home", ["homeId"]),
 });

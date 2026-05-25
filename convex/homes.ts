@@ -418,3 +418,290 @@ export const getReviews = query({
         );
     },
 });
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// ─── DASHBOARD-ONLY FUNCTIONS ─────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// ─────────────────────────────────────────────────────────────
+// LIST ALL HOMES (admin dashboard)
+// ─────────────────────────────────────────────────────────────
+
+export const listAllHomes = query({
+  args: {},
+
+  handler: async (ctx) => {
+    const homes = await ctx.db
+      .query("homes")
+      .order("desc")
+      .collect();
+
+    return await Promise.all(
+      homes.map(async (home) => {
+        let landlord = null;
+
+        try {
+          if (home.userId) {
+            landlord = await ctx.db.get(home.userId);
+          }
+        } catch (error) {
+          console.error(
+            "Invalid home owner:",
+            home._id
+          );
+        }
+
+        return {
+          ...home,
+          landlord,
+        };
+      })
+    );
+  },
+});
+
+// ─────────────────────────────────────────────────────────────
+// AVAILABLE HOMES (dashboard variant)
+// ─────────────────────────────────────────────────────────────
+
+export const listAvailableHomes = query({
+  args: {},
+
+  handler: async (ctx) => {
+    return await ctx.db
+      .query("homes")
+      .withIndex("by_available", (q) =>
+        q.eq("isAvailable", true)
+      )
+      .collect();
+  },
+});
+
+// ─────────────────────────────────────────────────────────────
+// COUNT HOMES
+// ─────────────────────────────────────────────────────────────
+
+export const countHomes = query({
+  args: {},
+
+  handler: async (ctx) => {
+    const homes = await ctx.db
+      .query("homes")
+      .collect();
+
+    return {
+      total: homes.length,
+
+      available: homes.filter(
+        (h) => h.isAvailable
+      ).length,
+
+      unavailable: homes.filter(
+        (h) => !h.isAvailable
+      ).length,
+
+      approved: homes.filter(
+        (h) => h.isApproved
+      ).length,
+
+      pending: homes.filter(
+        (h) => !h.isApproved
+      ).length,
+    };
+  },
+});
+
+// ─────────────────────────────────────────────────────────────
+// HOMES BY USER (dashboard variant)
+// ─────────────────────────────────────────────────────────────
+
+export const listHomesByUser = query({
+  args: {
+    userId: v.id("users"),
+  },
+
+  handler: async (ctx, { userId }) => {
+    return await ctx.db
+      .query("homes")
+      .withIndex("by_userId", (q) =>
+        q.eq("userId", userId)
+      )
+      .collect();
+  },
+});
+
+// ─────────────────────────────────────────────────────────────
+// GET SINGLE HOME (dashboard variant)
+// ─────────────────────────────────────────────────────────────
+
+export const getHomeById = query({
+  args: {
+    homeId: v.id("homes"),
+  },
+
+  handler: async (ctx, { homeId }) => {
+    const home = await ctx.db.get(homeId);
+
+    if (!home) return null;
+
+    let landlord = null;
+
+    try {
+      landlord = await ctx.db.get(home.userId);
+    } catch (error) {
+      console.error("Failed to fetch landlord");
+    }
+
+    return {
+      ...home,
+      landlord,
+    };
+  },
+});
+
+// ─────────────────────────────────────────────────────────────
+// CREATE HOME (dashboard variant — no validation, admin use)
+// ─────────────────────────────────────────────────────────────
+
+export const adminCreateHome = mutation({
+  args: {
+    userId: v.id("users"),
+
+    city: v.string(),
+
+    address: v.optional(v.string()),
+
+    price: v.number(),
+
+    category: v.union(
+      v.literal("House"),
+      v.literal("Apartment"),
+      v.literal("Villa"),
+      v.literal("Shop"),
+      v.literal("Office"),
+      v.literal("Studio"),
+      v.literal("Penthouse"),
+      v.literal("Townhouse"),
+      v.literal("Duplex"),
+      v.literal("Bungalow"),
+      v.literal("Cottage"),
+      v.literal("Mansion"),
+      v.literal("Room"),
+      v.literal("Store")
+    ),
+
+    telephone: v.string(),
+
+    home_cover: v.string(),
+
+    description: v.string(),
+
+    region: v.union(
+      v.literal("Bafoussam"),
+      v.literal("Douala"),
+      v.literal("Yaounde"),
+      v.literal("Buea"),
+      v.literal("Bamenda"),
+      v.literal("Garoua"),
+      v.literal("Maroua"),
+      v.literal("Ngaoundere"),
+      v.literal("Adamawa"),
+      v.literal("Bertoua")
+    ),
+
+    whatsapp_url: v.string(),
+
+    facebook_url: v.optional(v.string()),
+
+    details: v.array(v.string()),
+
+    isAvailable: v.boolean(),
+
+    isApproved: v.boolean(),
+
+    lat: v.optional(v.string()),
+
+    long: v.optional(v.string()),
+  },
+
+  handler: async (ctx, args) => {
+    // Verify user exists
+    const user = await ctx.db.get(args.userId);
+
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    return await ctx.db.insert("homes", {
+      ...args,
+    });
+  },
+});
+
+// ─────────────────────────────────────────────────────────────
+// UPDATE HOME AVAILABILITY
+// ─────────────────────────────────────────────────────────────
+
+export const updateHomeAvailability = mutation({
+  args: {
+    homeId: v.id("homes"),
+
+    isAvailable: v.boolean(),
+  },
+
+  handler: async (
+    ctx,
+    { homeId, isAvailable }
+  ) => {
+    await ctx.db.patch(homeId, {
+      isAvailable,
+    });
+
+    return {
+      success: true,
+    };
+  },
+});
+
+// ─────────────────────────────────────────────────────────────
+// UPDATE HOME APPROVAL
+// ─────────────────────────────────────────────────────────────
+
+export const updateHomeApproval = mutation({
+  args: {
+    homeId: v.id("homes"),
+
+    isApproved: v.boolean(),
+  },
+
+  handler: async (
+    ctx,
+    { homeId, isApproved }
+  ) => {
+    await ctx.db.patch(homeId, {
+      isApproved,
+    });
+
+    return {
+      success: true,
+    };
+  },
+});
+
+// ─────────────────────────────────────────────────────────────
+// DELETE HOME (dashboard variant — no ownership check, admin use)
+// ─────────────────────────────────────────────────────────────
+
+export const adminDeleteHome = mutation({
+  args: {
+    homeId: v.id("homes"),
+  },
+
+  handler: async (ctx, { homeId }) => {
+    await ctx.db.delete(homeId);
+
+    return {
+      success: true,
+    };
+  },
+});
