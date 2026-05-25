@@ -705,6 +705,13 @@ export const adminDeleteHome = mutation({
       .collect();
     for (const r of reviews) await ctx.db.delete(r._id);
 
+    // Clean up related notifications
+    const notifications = await ctx.db
+      .query("notifications")
+      .withIndex("by_homeId", (q) => q.eq("homeId", homeId))
+      .collect();
+    for (const n of notifications) await ctx.db.delete(n._id);
+
     await ctx.db.delete(homeId);
 
     return {
