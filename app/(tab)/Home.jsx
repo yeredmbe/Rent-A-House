@@ -1,8 +1,10 @@
+import { useMutation } from 'convex/react'
+import Constants from 'expo-constants'
 import * as Haptics from 'expo-haptics'
 import { router } from 'expo-router'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ActivityIndicator, FlatList, Image, Text, TouchableOpacity, View } from 'react-native'
+import { ActivityIndicator, Alert, FlatList, Image, Linking, Text, TouchableOpacity, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import Card from '../../components/Card'
 import Cardd from '../../components/Cardd'
@@ -18,12 +20,47 @@ const Home = () => {
   // const [refreshing, setRefreshing] = useState(false)
   const [category, setCategory] = useState("All")
   const { t } = useTranslation()
+  const updateAppVersion = useMutation(api.users.updateUserAppVersion)
 
   const HomesData = useCachedQuery(api.homes.getAvailableHomes, undefined, "cache_homes_available");
   const recentPosted = useCachedQuery(api.homes.recentlyPosted, undefined, "cache_homes_recent");
   const categoryHome = useCachedQuery(api.homes.getByCategory, category !== "All" ? { category } : "skip", `cache_homes_category_${category}`);
-
+  const latestAppVersion = useCachedQuery(api.users.getLatestAppVersion, undefined, "cache_latest_app_version");
   const isLoading = HomesData === undefined || recentPosted === undefined;
+
+  // Check app version on component mount
+useEffect(() => {
+  const checkAndUpdateAppVersion = async () => {
+    const currentAppVersion = Constants.expoConfig?.version;
+
+    if (user && currentAppVersion && latestAppVersion) {
+      await updateAppVersion({
+        userId: user._id,
+        appVersion: currentAppVersion,
+      });
+
+      if (user.appVersion && user.appVersion !== latestAppVersion) {
+        Alert.alert(
+          t('Update Available'),
+          t('UpdateText'),
+          [
+            { text: 'Later', style: 'cancel' },
+            {
+              text: t('Update'),
+              onPress: () =>
+                Linking.openURL(
+                  'https://play.google.com/store/apps/details?id=com.anonymous.RentAHouse'
+                ),
+            },
+          ]
+        );
+      }
+    }
+  };
+
+  checkAndUpdateAppVersion();
+}, [user?._id, latestAppVersion]);
+
 
 
 

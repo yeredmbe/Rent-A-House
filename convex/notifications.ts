@@ -87,3 +87,56 @@ export const deleteNotification = mutation({
         return { success: true };
     },
 });
+
+// ─── SEND PUSH NOTIFICATION ───────────────────────────────────────────────────
+/**
+ * Helper: Sends an actual push notification to a user's device
+ * Called after creating a notification in the database
+ */
+export const sendPushNotification = mutation({
+    args: {
+        userId: v.id("users"),
+        title: v.string(),
+        body: v.string(),
+        data: v.optional(v.any()), // homeId, messageId, etc.
+    },
+    handler: async (ctx, args) => {
+        try {
+            const user = await ctx.db.get(args.userId);
+            if (!user?.ExpoPushToken) {
+                // console.warn(`[push] User ${args.userId} has no token`);
+                return { success: false, reason: "NO_TOKEN" };
+            }
+
+            // Call the HTTP endpoint to send via Expo
+            const response = await fetch(
+                process.env.EXPO_PUBLIC_CONVEX_SITE_URL
+                    ? `${process.env.EXPO_PUBLIC_CONVEX_SITE_URL}/api/v1/notifications/send`
+                    : "http://localhost:3210/api/v1/notifications/send",
+                {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        userId: args.userId,
+                        title: args.title,
+                        body: args.body,
+                        data: args.data || {},
+                    }),
+                }
+            );
+
+            if (!response.ok) {
+                const error = await response.json();
+                // console.error(`[push] Failed to send to user ${args.userId}:`, error);
+                return { success: false, reason: "EXPO_ERROR", error };
+            }
+
+            // console.log(`[push] ✅ Sent to user ${args.userId}`);
+            return { success: true };
+        } catch (error) {
+            const msg = error instanceof Error ? error.message : String(error);
+            // console.error(`[push] Error sending notification:`, msg);
+            return { success: false, reason: "ERROR", error: msg };
+        }
+    },
+});

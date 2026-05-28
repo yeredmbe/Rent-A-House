@@ -120,24 +120,53 @@ const SignUp = () => {
             });
         }
 
-        if (Device.isDevice) {
+        if (!Device.isDevice) {
+            console.warn('[push] Notifications require a physical device.');
+            return;
+        }
+
+        try {
             const { status: existingStatus } = await Notifications.getPermissionsAsync();
             let finalStatus = existingStatus;
+
             if (existingStatus !== 'granted') {
-                const { status } = await Notifications.requestPermissionsAsync();
+                const { status } = await Notifications.requestPermissionsAsync({
+                    ios: { allowAlert: true, allowBadge: true, allowSound: true },
+                    android: { allowAlert: true, allowBadge: true, allowSound: true },
+                });
                 finalStatus = status;
             }
-            if (finalStatus !== 'granted') return;
 
-            try {
-                const projectId =
-                    Constants?.expoConfig?.extra?.eas?.projectId ?? Constants?.easConfig?.projectId;
-                if (!projectId) throw new Error('Project ID not found');
-                const token = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
-                await convex.mutation(api.users.updatePushToken, { userId, token });
-            } catch (e) {
-                console.log(e);
+            console.log('[push] permission status:', existingStatus, '→', finalStatus);
+
+            if (finalStatus !== 'granted') {
+                showToast({
+                    message: 'Push notifications permission was not granted.',
+                    type: 'warning',
+                    duration: 4000,
+                    position: 'top',
+                    title: 'Notifications',
+                });
+                return;
             }
+
+            const projectId =
+                Constants?.expoConfig?.extra?.eas?.projectId ?? Constants?.easConfig?.projectId;
+            if (!projectId) {
+                throw new Error('Project ID not found');
+            }
+
+            const token = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
+            await convex.mutation(api.users.updatePushToken, { userId, token });
+        } catch (e) {
+            console.error('[push] registration failed:', e);
+            showToast({
+                message: 'Unable to register for push notifications.',
+                type: 'error',
+                duration: 4000,
+                position: 'top',
+                title: 'Notifications',
+            });
         }
     }
 

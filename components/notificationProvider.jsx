@@ -1,6 +1,10 @@
+import Constants from "expo-constants";
+import * as Device from "expo-device";
 import * as Notifications from "expo-notifications";
 import { router } from "expo-router";
 import { useEffect } from "react";
+import { api } from "../convex/_generated/api";
+import { convex, useStore } from "../Stores/authStore";
 
 // Configure notification behavior while app is foregrounded
 Notifications.setNotificationHandler({
@@ -12,6 +16,8 @@ Notifications.setNotificationHandler({
 });
 
 const NotificationProvider = ({ children }) => {
+  const { user } = useStore();
+
   useEffect(() => {
     let notificationReceivedListener;
     let responseListener;
@@ -23,6 +29,11 @@ const NotificationProvider = ({ children }) => {
         if (status !== "granted") {
           console.warn("🚫 Permission for notifications was not granted.");
           return;
+        }
+
+        // Save token to database if permission is granted and user is authenticated
+        if (user?._id) {
+          await savePushToken(user._id);
         }
 
         // Foreground notification listener
@@ -68,7 +79,34 @@ const NotificationProvider = ({ children }) => {
         notificationReceivedListener.remove();
       if (responseListener?.remove) responseListener.remove();
     };
-  }, []);
+  }, [user]);
+
+  /**
+   * Retrieve and save push token to database
+   */
+  async function savePushToken(userId) {
+    try {
+      if (!Device.isDevice) {
+        console.warn("[push] Notifications require a physical device.");
+        return;
+      }
+
+      const projectId =
+        Constants?.expoConfig?.extra?.eas?.projectId ?? Constants?.easConfig?.projectId;
+      if (!projectId) {
+        console.error("[push] Project ID not found");
+        return;
+      }
+
+      const token = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
+      if (token) {
+        await convex.mutation(api.users.updatePushToken, { userId, token });
+        console.log("[push] Token saved successfully:", token);
+      }
+    } catch (error) {
+      console.error("[push] Failed to save token:", error);
+    }
+  }
 
   return <>{children}</>;
 };

@@ -1,4 +1,5 @@
 import { ConvexError, v } from "convex/values";
+import { api } from "./_generated/api";
 import { mutation, query } from "./_generated/server";
 
 // ─── HELPERS ────────────────────────────────────────────────────────────────
@@ -76,8 +77,8 @@ export const register = mutation({
         // 5. Welcome message
         const welcomeText =
             role === "client"
-                ? `You're In! Let's Get Your Profile Ready 🏠\n\nHello ${args.name},\n\nA massive welcome to Rent-A-House! ✨\n\nPlease take a moment to finish setting up your profile. By adding your location, you'll be the first to know when a perfect house pops up in your area! 🚀\n\nHappy house hunting!\nThe Rent-A-House Team`
-                : `Welcome to Rent-A-House, dear Landlord! 🏠✨\n\nHello ${args.name},\n\nWelcome as a landlord on our platform. 🤝\n\nFinalize your profile to start publishing listings and reach potential tenants. 📍\n\nThe Rent-A-House Team`;
+                ? `You're In! Let's Get Your Profile Ready 🏠\n\nHello ${args.name},\n\nA massive welcome to Rent-A-House! ✨\n\nPlease take a moment to finish setting up your profile. By adding your location, you'll be the first to know when a perfect house pops up in your area! 🚀\n\nHappy house hunting!\nThe Rent-A-House Team\n\n\n\n\nVous êtes inscrit ! Préparons votre profil 🏠\n\nBonjour ${args.name},\n\nUn grand bienvenue sur Rent-A-House ! ✨\n\nVeuillez prendre un moment pour finaliser la configuration de votre profil. En ajoutant votre localisation, vous serez parmi les premiers informés lorsqu’une maison parfaite sera disponible dans votre région ! 🚀\n\nBonne recherche de maison !\nL’équipe Rent-A-House `
+                : `Welcome to Rent-A-House, dear Landlord! 🏠✨\n\nHello ${args.name},\n\nWelcome as a landlord on our platform. 🤝\n\nFinalize your profile to start publishing listings and reach potential tenants. 📍\n\nThe Rent-A-House Team\n\n\n\n\nBienvenue sur Rent-A-House, cher propriétaire ! 🏠✨\n\nBonjour ${args.name},\n\nBienvenue en tant que propriétaire sur notre plateforme. 🤝\n\nFinalisez votre profil pour commencer à publier des annonces et atteindre des locataires potentiels. 📍\n\nL’équipe Rent-A-House`;
 
         const messageId = await ctx.db.insert("messages", {
             senderId: admin._id,
@@ -95,6 +96,19 @@ export const register = mutation({
             messageId,
             isRead: false,
         });
+
+        // 7. Send push notification (if user has token)
+        try {
+            await ctx.runMutation(api.notifications.sendPushNotification, {
+                userId,
+                title: "🎉 Welcome to Rent-A-House!",
+                body: `Hi ${args.name}, check your messages to get started`,
+                data: { messageId: messageId.toString() },
+            });
+        } catch (err) {
+            console.warn(`[users] Failed to send welcome push notification:`, err);
+            // Don't throw — user still gets the in-app notification
+        }
 
         return { userId, messageId };
     },
@@ -395,3 +409,29 @@ export const deleteUser = mutation({
     await ctx.db.delete(userId);
   },
 });
+
+// ─── UPDATE APP VERSION ──────────────────────────────────────────────────────
+export const updateUserAppVersion = mutation({
+  args: {
+    appVersion: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const latest = await ctx.db.query("latestAppVersion").first();
+
+    if (latest) {
+      await ctx.db.patch(latest._id, { version: args.appVersion });
+    } else {
+      await ctx.db.insert("latestAppVersion", { version: args.appVersion });
+    }
+  },
+});
+
+export const getLatestAppVersion = query({
+  args: {},
+  handler: async (ctx) => {
+    const latest = await ctx.db.query("latestAppVersion").first();
+
+    return latest ? latest.version : "1.0.0";
+  },
+});
+

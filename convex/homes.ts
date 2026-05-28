@@ -1,4 +1,5 @@
 import { ConvexError, v } from "convex/values";
+import { api } from "./_generated/api";
 import { mutation, query } from "./_generated/server";
 
 // ─── SHARED REGION/CATEGORY VALIDATORS ──────────────────────────────────────
@@ -97,6 +98,18 @@ export const createHome = mutation({
                 homeId,
                 isRead: false,
             });
+
+            // Send push notification to user's device
+            try {
+                await ctx.runMutation(api.notifications.sendPushNotification, {
+                    userId: user._id,
+                    title: "🏠 New Listing",
+                    body: `${args.address || "New property"} in ${args.region}`,
+                    data: { homeId: homeId.toString() },
+                });
+            } catch (err) {
+                console.warn(`[homes] Failed to send push to user ${user._id}:`, err);
+            }
         }
 
         return homeId;
@@ -343,6 +356,19 @@ export const toggleFavorite = mutation({
                 homeId: args.homeId,
                 isRead: false,
             });
+
+            // Send push notification to home owner
+            try {
+                const favoriter = await ctx.db.get(args.userId);
+                await ctx.runMutation(api.notifications.sendPushNotification, {
+                    userId: home.userId,
+                    title: "❤️ Someone Favorited Your Home",
+                    body: `${favoriter?.name || "A user"} liked your property`,
+                    data: { homeId: args.homeId.toString() },
+                });
+            } catch (err) {
+                console.warn(`[homes] Failed to send favorite notification:`, err);
+            }
 
             return { action: "added" };
         }

@@ -41,6 +41,7 @@ export default defineSchema({
         subscriptionDueDate: v.optional(v.number()), // Unix ms
         subscriptionExpiryDate: v.optional(v.number()), // Unix ms
         ExpoPushToken: v.optional(v.string()),
+        appVersion: v.optional(v.string()),
 
         // ── Added for admin dashboard compatibility (optional) ──────────────
         phone: v.optional(v.string()),
@@ -170,6 +171,14 @@ export default defineSchema({
         .index("by_recipient", ["recipientId"])
         .index("by_sender", ["senderId"]),
 
+
+         // latest app version
+    latestAppVersion:defineTable({
+         version: v.string(),
+        })
+        .index("by_version", ["version"]),
+
+        
     // ── Rentals ───────────────────────────────────────────────────────────────
     rentals: defineTable({
         homeId: v.id("homes"),
@@ -188,4 +197,7 @@ export default defineSchema({
         .index("by_tenant", ["tenantId"])
         .index("by_landlord", ["landlordId"])
         .index("by_home", ["homeId"]),
+
+
+       
 });

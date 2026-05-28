@@ -107,11 +107,73 @@ const loginHandler = httpAction(async (ctx, req) => {
     return json({ message: "Sign in successful", user: safeUser, token });
 });
 
+// ─── SEND PUSH NOTIFICATION ───────────────────────────────────────────────────
+/**
+ * Called by mutations to send push notifications to users via Expo
+ */
+const sendPushNotificationHandler = httpAction(async (ctx, req) => {
+    const body = await req.json();
+    const { userId, title, body: notificationBody, data } = body;
+
+    if (!userId || !title || !notificationBody) {
+        return json(
+            { message: "userId, title, and body are required", code: "MISSING_FIELDS" },
+            400
+        );
+    }
+
+    try {
+        // Get user's expo token
+        const user = await ctx.runQuery(api.users.getById, { userId });
+        if (!user?.ExpoPushToken) {
+            return json(
+                { message: "User has no push token", code: "NO_TOKEN" },
+                400
+            );
+        }
+
+        // Send to Expo Push API
+        const response = await fetch("https://exp.host/--/api/v2/push/send", {
+            method: "POST",
+            headers: { "Content-Type": "application/json",
+                "Accept-Encoding": "gzip, deflate",
+                "Accept": "application/json" },
+            body: JSON.stringify({
+                to: user.ExpoPushToken,
+                sound: "default",
+                title,
+                body: notificationBody,
+                data: data || {},
+            }),
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+            // console.error("[push] Expo API error:", result);
+            return json(
+                { message: "Failed to send notification", code: "EXPO_ERROR", error: result },
+                500
+            );
+        }
+
+        return json({ message: "Notification sent successfully", ticket: result }, 200);
+    } catch (error) {
+        const msg = error instanceof Error ? error.message : String(error);
+        // console.error("[push] send error:", msg);
+        return json(
+            { message: "Failed to send notification", code: "UNKNOWN", error: msg },
+            500
+        );
+    }
+});
+
 // ─── ROUTER ───────────────────────────────────────────────────────────────────
 const http = httpRouter();
 
 http.route({ path: "/api/v1/user/register", method: "POST", handler: registerHandler });
 http.route({ path: "/api/v1/user/login",    method: "POST", handler: loginHandler });
+http.route({ path: "/api/v1/notifications/send", method: "POST", handler: sendPushNotificationHandler });
 
 // OPTIONS preflight (mobile clients may send these)
 http.route({

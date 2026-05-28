@@ -188,11 +188,15 @@ const Notification = () => {
                 <Text className="text-sm font-semibold text-gray-800" numberOfLines={1}>
                   {getNotificationTitle(item)}
                 </Text>
-                {item?.notification_type === "message" && item?.message && (
+                {item?.text ? (
+                  <Text className="text-xs text-gray-500 mt-0.5" numberOfLines={2}>
+                    {item.text}
+                  </Text>
+                ) : item?.notification_type === "message" && item?.message ? (
                   <Text className="text-xs text-gray-500 mt-0.5" numberOfLines={1}>
                     {item.message}
                   </Text>
-                )}
+                ) : null}
                 <Text className="text-xs text-gray-400 mt-1">
                   {formatRelativeTime(item?._creationTime)}
                 </Text>

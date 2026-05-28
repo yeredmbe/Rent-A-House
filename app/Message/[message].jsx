@@ -168,9 +168,9 @@ const Message = () => {
     return (
         <SafeAreaView edges={['top']} className="flex-1 bg-white">
             <KeyboardAvoidingView
-                behavior={Platform.OS === "ios" ? "padding" : "height"}
+                behavior="padding"
                 className="flex-1 bg-white"
-                keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
+                keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 90}
             >
                 {/* Header */}
                 <View className="flex-row items-center px-4 py-3 bg-white border-b border-gray-100"
@@ -198,7 +198,7 @@ const Message = () => {
                             {selectedUser?.name ?? t("Chats")}
                         </Text>
                         <Text className="text-xs text-[#124BCC]">
-                            {selectedUser?.role === "landLord" ? t("LandLord") : selectedUser?._id === "jn7aq3m0g00px4wnhr3dhp6cxs85gpdz" ? "Admin" : "Client"}
+                            {selectedUser?.role === "client" ? "Client" : selectedUser?.role === "admin" ? "Admin" : t("LandLord")}
                         </Text>
                     </View>
                 </View>
@@ -229,6 +229,8 @@ const Message = () => {
                         className="flex-1 px-3"
                         ref={scrollRef}
                         showsVerticalScrollIndicator={false}
+                        keyboardShouldPersistTaps="handled"
+                        onLayout={() => scrollRef?.current?.scrollToEnd({ animated: true })}
                         onContentSizeChange={() => scrollRef?.current?.scrollToEnd({ animated: true })}
                         contentContainerStyle={{ paddingVertical: 12 }}
                     >
@@ -324,7 +326,7 @@ const Message = () => {
                 </View>
 
                 {/* Input bar */}
-                {!(selectedUser?.role === "admin" && selectedUser?._id === "jn7aq3m0g00px4wnhr3dhp6cxs85gpdz") && (
+                {
                     <View
                         className="px-3 py-2 bg-white border-t border-gray-100 flex-row items-end"
                         style={{ elevation: 4, shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 6, shadowOffset: { width: 0, height: -1 } }}
@@ -358,7 +360,7 @@ const Message = () => {
                             <Entypo name="paper-plane" size={18} color={messagez.image_url !== "" || messagez.text !== "" ? "white" : "#9ca3af"} />
                         </TouchableOpacity>
                     </View>
-                )}
+            }
             </KeyboardAvoidingView>
         </SafeAreaView>
     )

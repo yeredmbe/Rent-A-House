@@ -1,4 +1,5 @@
 import { ConvexError, v } from "convex/values";
+import { api } from "./_generated/api";
 import { mutation, query } from "./_generated/server";
 
 // ─── SEND MESSAGE ─────────────────────────────────────────────────────────────
@@ -35,6 +36,19 @@ export const sendMessage = mutation({
             messageId,
             isRead: false,
         });
+
+        // Send push notification to receiver
+        try {
+            const sender = await ctx.db.get(args.senderId);
+            await ctx.runMutation(api.notifications.sendPushNotification, {
+                userId: args.receiverId,
+                title: `💬 Message from ${sender?.name || "Someone"}`,
+                body: args.text || "📷 Sent an image",
+                data: { messageId: messageId.toString() },
+            });
+        } catch (err) {
+            console.warn(`[messages] Failed to send push notification:`, err);
+        }
 
         // Auto-add each other to chat_users (chat list) if not already there
         const sender = await ctx.db.get(args.senderId);
@@ -198,52 +212,114 @@ export const countUnreadMessages = query({
 });
 
 // ─── ADMIN BROADCAST MESSAGE ──────────────────────────────────────────────────
+const normalizeBroadcastRecipientType = (type: string) => {
+    if (type === "all") return "all";
+    if (type === "landlords") return "landLord";
+    if (type === "clients") return "client";
+    if (type === "client" || type === "landLord") return type;
+    return "all";
+};
+
+const selectBroadcastTargets = async (ctx: any, adminId: any, recipientType: string) => {
+    let targets: any[] = await ctx.db.query("users").collect();
+    targets = targets.filter((u: any) => u._id !== adminId && u.role !== "admin");
+    if (recipientType !== "all") {
+        const role = normalizeBroadcastRecipientType(recipientType);
+        targets = targets.filter((u: any) => u.role === role);
+    }
+    return targets;
+};
+
+const deliverBroadcastToUsers = async (
+    ctx: any,
+    adminId: any,
+    text: string | undefined,
+    image_url: string | undefined,
+    recipientType: string,
+    notifText: string
+) => {
+    const targets = await selectBroadcastTargets(ctx, adminId, recipientType);
+    const admin = await ctx.db.get(adminId);
+    const adminChats = admin?.chat_users ?? [];
+    const adminChatIds = new Set(adminChats.map((id: any) => id.toString()));
+    const updatedAdminChats = [...adminChats];
+
+    await Promise.all(
+        targets.map(async (user: any) => {
+            const msgId = await ctx.db.insert("messages", {
+                senderId: adminId,
+                receiverId: user._id,
+                text,
+                image_url,
+                readByReceiver: false,
+                readBySender: true,
+            });
+            await ctx.db.insert("notifications", {
+                senderId: adminId,
+                receiverId: user._id,
+                notification_type: "system",
+                messageId: msgId,
+                isRead: false,
+                text: notifText,
+            });
+
+            const targetChats = user.chat_users ?? [];
+            if (!targetChats.some((id: any) => id.toString() === adminId.toString())) {
+                await ctx.db.patch(user._id, {
+                    chat_users: [...targetChats, adminId],
+                });
+            }
+
+            if (!adminChatIds.has(user._id.toString())) {
+                adminChatIds.add(user._id.toString());
+                updatedAdminChats.push(user._id);
+            }
+        })
+    );
+
+    if (admin && updatedAdminChats.length !== adminChats.length) {
+        await ctx.db.patch(adminId, {
+            chat_users: updatedAdminChats,
+        });
+    }
+
+    return targets.length;
+};
+
 export const adminBroadcast = mutation({
     args: {
         adminId: v.id("users"),
         text: v.optional(v.string()),
         image_url: v.optional(v.string()),
-        // optional: filter by role. If omitted, sends to all non-admin users
         targetRole: v.optional(
-            v.union(v.literal("client"), v.literal("landLord"))
+            v.union(
+                v.literal("all"),
+                v.literal("client"),
+                v.literal("landLord"),
+                v.literal("landlords"),
+                v.literal("clients")
+            )
         ),
     },
     handler: async (ctx, args) => {
         if (!args.text && !args.image_url)
             throw new ConvexError("MESSAGE_CONTENT_REQUIRED");
 
-        let targets = await ctx.db.query("users").collect();
-        targets = targets.filter((u) => u._id !== args.adminId && u.role !== "admin");
-        if (args.targetRole) {
-            targets = targets.filter((u) => u.role === args.targetRole);
-        }
-
+        const recipientType = args.targetRole || "all";
         const notifText = args.text
             ? `System message: ${args.text.substring(0, 100)}${args.text.length > 100 ? "…" : ""}`
             : "System message: New image notification";
 
-        await Promise.all(
-            targets.map(async (user) => {
-                const msgId = await ctx.db.insert("messages", {
-                    senderId: args.adminId,
-                    receiverId: user._id,
-                    text: args.text,
-                    image_url: args.image_url,
-                    readByReceiver: false,
-                    readBySender: true,
-                });
-                await ctx.db.insert("notifications", {
-                    senderId: args.adminId,
-                    receiverId: user._id,
-                    notification_type: "system",
-                    messageId: msgId,
-                    isRead: false,
-                    text: notifText,
-                });
-            })
+        const sentCount = await deliverBroadcastToUsers(
+            ctx,
+            args.adminId,
+            args.text,
+            args.image_url,
+            recipientType,
+            notifText
         );
 
-        return { sent: targets.length };
+        return { sent: sentCount };
     },
 });
 
@@ -284,10 +360,16 @@ export const sendBroadcast = mutation({
     ),
   },
   handler: async (ctx, args) => {
-    return await ctx.db.insert("broadcastMessages", {
-      ...args,
-      sentAt: Date.now(),
-    });
+        const broadcastId = await ctx.db.insert("broadcastMessages", {
+            ...args,
+            sentAt: Date.now(),
+        });
+
+        const text = `${args.title}\n\n${args.content}`;
+        const notifText = `System message: ${args.title.substring(0, 100)}${args.title.length > 100 ? "…" : ""}`;
+        await deliverBroadcastToUsers(ctx, args.senderId, text, undefined, args.recipientType, notifText);
+
+        return broadcastId;
   },
 });
 
@@ -313,15 +395,49 @@ export const listDirectMessages = query({
   },
 });
 
-/** All direct messages sent by a user */
+/** List all received messages for a recipient (including system/admin messages) */
+export const listReceivedMessages = query({
+    args: { receiverId: v.id("users") },
+    handler: async (ctx, { receiverId }) => {
+        const messages = await ctx.db
+            .query("messages")
+            .withIndex("by_receiverId", (q) => q.eq("receiverId", receiverId))
+            .order("desc")
+            .collect();
+
+        return await Promise.all(
+            messages.map(async (m) => {
+                const sender = await ctx.db.get(m.senderId);
+                return {
+                    ...m,
+                    sender: sender ? { _id: sender._id, name: sender.name, email: sender.email, image_url: sender.image_url } : null,
+                };
+            })
+        );
+    },
+});
+
+/** All messages sent by a user (includes admin broadcasts delivered as messages) */
 export const listSentMessages = query({
   args: { senderId: v.id("users") },
   handler: async (ctx, { senderId }) => {
-    return await ctx.db
-      .query("directMessages")
-      .withIndex("by_sender", (q) => q.eq("senderId", senderId))
+    const messages = await ctx.db
+      .query("messages")
+      .withIndex("by_senderId", (q) => q.eq("senderId", senderId))
       .order("desc")
       .collect();
+
+    return await Promise.all(
+      messages.map(async (m) => {
+        const receiver = await ctx.db.get(m.receiverId);
+        return {
+          ...m,
+          receiver: receiver
+            ? { _id: receiver._id, name: receiver.name, email: receiver.email, image_url: receiver.image_url }
+            : null,
+        };
+      })
+    );
   },
 });
 

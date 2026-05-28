@@ -2,7 +2,7 @@
   "expo": {
     "name": "RentAHouse",
     "slug": "Rent-A-House",
-    "version": "3.01.0",
+    "version": "3.04.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "rentahouse",
@@ -31,7 +31,15 @@
     },
     "plugins": [
       "expo-router",
-      "expo-splash-screen",
+      [
+        "expo-splash-screen",
+        {
+            "backgroundColor": "#FFFFFF",
+            "image": "./assets/images/splash.png",
+            "imageWidth": 450,
+            "resizeMode": "contain"
+        }
+      ],
       "expo-web-browser",
       "expo-localization",
       [

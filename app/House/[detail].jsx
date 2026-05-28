@@ -259,58 +259,64 @@ const DetailPage = () => {
 
         {/* Reviews Modal */}
         <Modal visible={isOpen} onRequestClose={() => setIsOpen(false)} animationType='slide' presentationStyle='pageSheet'>
-          <View className="my-2 p-3 w-full justify-end items-end">
-            <TouchableOpacity activeOpacity={0.6} onPress={() => setIsOpen(false)}>
-              <Image source={icons.cancel} tintColor="#123BCC" className="size-7" />
-            </TouchableOpacity>
-          </View>
-
-          <FlatList
-            data={Home?.reviews}
-            keyExtractor={(item, index) => item?._id?.toString() ?? index.toString()}
-            nestedScrollEnabled
-            className="p-4"
-            renderItem={({ item }) => (
-              <TouchableOpacity
-                onPress={() => {
-                  const reviewerId = item?.user?._id;
-                  if (!reviewerId) return;
-                  router.push(`/ProfileUser/${reviewerId}`);
-                  setIsOpen(false);
-                }}
-                activeOpacity={0.7}
-                className="w-full flex flex-row mt-3"
-              >
-                <Image
-                  source={
-                    item?.user?.image_url
-                      ? { uri: item.user.image_url }
-                      : image.load
-                  }
-                  className="size-10 rounded-full border"
-                />
-                <View className="ml-2">
-                  <Text className="text-md text-gray-500">{item?.text}</Text>
-                  <View className="flex flex-row items-center justify-start">
-                    <Text className="text-gray-500 font-bold text-sm mr-3">
-                      {item?.user?.name ?? 'User'}
-                    </Text>
-                    <Text numberOfLines={1} className="text-gray-500 text-sm">{formatRelativeTime(item?._creationTime)}</Text>
-                  </View>
-                </View>
+          <KeyboardAvoidingView
+            style={{ flex: 1 }}
+            behavior="padding"
+            keyboardVerticalOffset={Platform.OS === "ios" ? 20 : 90}
+          >
+            <View className="my-2 p-3 w-full justify-end items-end">
+              <TouchableOpacity activeOpacity={0.6} onPress={() => setIsOpen(false)}>
+                <Image source={icons.cancel} tintColor="#123BCC" className="size-7" />
               </TouchableOpacity>
-            )}
-            ListEmptyComponent={() => (
-              <View className="w-full h-full bg-white items-center justify-center my-5 p-4">
-                <Image source={icons.evaluate} tintColor="gray" className="size-96 opacity-40" resizeMode='contain' />
-                <Text className="text-gray-400 mt-2">No review yet.</Text>
-                <Text className="text-gray-400 mt-2">Be the first to review this property!</Text>
-              </View>
-            )}
-          />
+            </View>
 
-          <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} className="bg-white" keyboardVerticalOffset={40}>
-            <View className="flex flex-row  items-end p-4 my-2">
+            <FlatList
+              data={Home?.reviews}
+              keyExtractor={(item, index) => item?._id?.toString() ?? index.toString()}
+              nestedScrollEnabled
+              keyboardShouldPersistTaps="handled"
+              className="p-4"
+              contentContainerStyle={{ paddingBottom: 140 }}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  onPress={() => {
+                    const reviewerId = item?.user?._id;
+                    if (!reviewerId) return;
+                    router.push(`/ProfileUser/${reviewerId}`);
+                    setIsOpen(false);
+                  }}
+                  activeOpacity={0.7}
+                  className="w-full flex flex-row mt-3"
+                >
+                  <Image
+                    source={
+                      item?.user?.image_url
+                        ? { uri: item.user.image_url }
+                        : image.load
+                    }
+                    className="size-10 rounded-full border"
+                  />
+                  <View className="ml-2">
+                    <Text className="text-md text-gray-500">{item?.text}</Text>
+                    <View className="flex flex-row items-center justify-start">
+                      <Text className="text-gray-500 font-bold text-sm mr-3">
+                        {item?.user?.name ?? 'User'}
+                      </Text>
+                      <Text numberOfLines={1} className="text-gray-500 text-sm">{formatRelativeTime(item?._creationTime)}</Text>
+                    </View>
+                  </View>
+                </TouchableOpacity>
+              )}
+              ListEmptyComponent={() => (
+                <View className="w-full h-full bg-white items-center justify-center my-5 p-4">
+                  <Image source={icons.evaluate} tintColor="gray" className="size-96 opacity-40" resizeMode='contain' />
+                  <Text className="text-gray-400 mt-2">No review yet.</Text>
+                  <Text className="text-gray-400 mt-2">Be the first to review this property!</Text>
+                </View>
+              )}
+            />
+
+            <View className="flex flex-row items-end p-4 my-2 bg-white">
               <View className="flex flex-row justify-start items-center flex-1">
                 <Image source={user?.image_url ? { uri: user.image_url } : image.load} className="size-10 rounded-full border" />
                 <TextInput
@@ -319,6 +325,8 @@ const DetailPage = () => {
                   onChangeText={(t) => setText(t)}
                   value={text}
                   className='border border-gray-200 rounded-full p-2 w-5/6 ml-3'
+                  multiline
+                  textAlignVertical='top'
                 />
               </View>
               <TouchableOpacity
