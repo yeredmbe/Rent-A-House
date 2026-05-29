@@ -426,6 +426,16 @@ export const updateUserAppVersion = mutation({
   },
 });
 
+export const updateUserCurrentAppVersion = mutation({
+  args: {
+    userId: v.id("users"),
+    appVersion: v.string(),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.userId, { appVersion: args.appVersion });
+  },
+});
+
 export const getLatestAppVersion = query({
   args: {},
   handler: async (ctx) => {

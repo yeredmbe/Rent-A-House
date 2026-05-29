@@ -20,7 +20,7 @@ const Home = () => {
   // const [refreshing, setRefreshing] = useState(false)
   const [category, setCategory] = useState("All")
   const { t } = useTranslation()
-  const updateAppVersion = useMutation(api.users.updateUserAppVersion)
+  const updateAppVersion = useMutation(api.users.updateUserCurrentAppVersion)
 
   const HomesData = useCachedQuery(api.homes.getAvailableHomes, undefined, "cache_homes_available");
   const recentPosted = useCachedQuery(api.homes.recentlyPosted, undefined, "cache_homes_recent");
@@ -34,17 +34,13 @@ useEffect(() => {
     const currentAppVersion = Constants.expoConfig?.version;
 
     if (user && currentAppVersion && latestAppVersion) {
-      await updateAppVersion({
-        userId: user._id,
-        appVersion: currentAppVersion,
-      });
-
-      if (user.appVersion && user.appVersion !== latestAppVersion) {
+      // Check if current version differs from latest version
+      if (currentAppVersion !== latestAppVersion) {
         Alert.alert(
           t('Update Available'),
           t('UpdateText'),
           [
-            { text: 'Later', style: 'cancel' },
+            { text: t('Later'), style: 'cancel' },
             {
               text: t('Update'),
               onPress: () =>
@@ -55,6 +51,12 @@ useEffect(() => {
           ]
         );
       }
+
+      // Update user's app version in database
+      await updateAppVersion({
+        userId: user._id,
+        appVersion: currentAppVersion,
+      });
     }
   };
 

@@ -18,6 +18,7 @@ import evaluate from "../assets/icons/evaluate.png";
 import exit from '../assets/icons/exit.png';
 import facebook from '../assets/icons/facebook.png';
 import help from '../assets/icons/faq.png';
+import feedback from "../assets/icons/feedback.png";
 import filter from "../assets/icons/filter.png";
 import gmail from '../assets/icons/gmail.png';
 import heart from '../assets/icons/heart.png';
@@ -33,6 +34,7 @@ import labell from '../assets/icons/labell.png';
 import lender from '../assets/icons/lender.png';
 import location from '../assets/icons/location.png';
 import love from '../assets/icons/love.png';
+import maison from "../assets/icons/maison.png";
 import message from '../assets/icons/message.png';
 import messageNotification from '../assets/icons/messageNotification.png';
 import more from '../assets/icons/more.png';
@@ -53,7 +55,6 @@ import user from '../assets/icons/user.png';
 import userr from '../assets/icons/userr.png';
 import security from '../assets/icons/verified.png';
 import whatsapp from '../assets/icons/whatsapp.png';
-import maison from "../assets/icons/maison.png"
 
 
 export default {
@@ -112,5 +113,6 @@ export default {
     neutral,
     filter,
     setting,
-    maison
+    maison,
+    feedback
 };

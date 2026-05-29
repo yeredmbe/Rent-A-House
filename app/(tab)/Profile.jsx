@@ -120,7 +120,7 @@ const Profile = () => {
   // ── Share ────────────────────────────────────────────────────────────────────
   const onShare = async () => {
     try {
-      await Share.share({ message: 'https://faurzanext.com' })
+      await Share.share({ message: 'https://play.google.com/store/apps/details?id=com.anonymous.RentAHouse' })
     } catch (error) {
       Alert.alert(error.message)
     }
@@ -158,6 +158,8 @@ const Profile = () => {
     { id: 1, src: icons.love, title: t('Favorite'), link: '/Favorites' },
     { id: 2, src: icons.security, title: t('Settings'), link: '/Setting' },
     { id: 6, src: icons.policy, title: t('Policies'), link: '/Policy' },
+    {id: 7, src: icons.payment, title: t('Payment'), link:"/Payment"},
+    // {id:8, src:icons.help, title: t('Help'), link:"/Help-Center"},
   ]
 
   const MenuItem = ({ src, title, link, onPress, danger }) => (

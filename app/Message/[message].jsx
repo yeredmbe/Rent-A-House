@@ -22,14 +22,16 @@ const Message = () => {
     });
     const { selectedUser } = messageStore()
     const { user } = useStore()
-    const { message} = useLocalSearchParams()
+    const { message } = useLocalSearchParams()
     const scrollRef = useRef();
     const { t } = useTranslation()
 
-    const messages = useCachedQuery(api.messages.getMessages,
+    const messages = useCachedQuery(
+        api.messages.getMessages,
         (user?._id && message) ? { userA: user._id, userB: message } : "skip",
         `cache_messages_${user?._id}_${message}`
     ) ?? [];
+
     const sendMessageMutation = useMutation(api.messages.sendMessage);
 
     // Auto-scroll whenever messages change
@@ -61,16 +63,14 @@ const Message = () => {
                     animationType: 'slide',
                     progressBar: true,
                     richColors: true,
-                })
+                });
                 return;
             }
 
-            if (!result.canceled) {
-                const selectedImage = result.assets[0];
-                const base64Image = `data:${selectedImage.mimeType};base64,${selectedImage.base64}`;
-                if (base64Image) {
-                    setMessage({ ...messagez, image_url: base64Image });
-                }
+            const selectedImage = result.assets[0];
+            const base64Image = `data:${selectedImage.mimeType};base64,${selectedImage.base64}`;
+            if (base64Image) {
+                setMessage({ ...messagez, image_url: base64Image });
             }
         } catch (error) {
             console.log("Error picking image:", error);
@@ -123,15 +123,14 @@ const Message = () => {
 
 
     const removeImage = () => {
-        setMessage({ ...messagez, image_url: "" })
-    }
+        setMessage({ ...messagez, image_url: "" });
+    };
 
     const getSenderName = (msg) => {
         if (msg.senderId._id === user._id) {
             return msg.senderId.name || "You";
-        } else {
-            return msg.senderId.name || "Unknown";
         }
+        return msg.senderId.name || "Unknown";
     };
 
     const formatTime = (timestamp) => {
@@ -155,7 +154,9 @@ const Message = () => {
     const groupedMessages = messages.reduce((acc, msg, index) => {
         const msgDate = new Date(msg._creationTime || msg.createdAt).toDateString();
         const prevMsg = messages[index - 1];
-        const prevDate = prevMsg ? new Date(prevMsg._creationTime || prevMsg.createdAt).toDateString() : null;
+        const prevDate = prevMsg
+            ? new Date(prevMsg._creationTime || prevMsg.createdAt).toDateString()
+            : null;
         if (msgDate !== prevDate) {
             acc.push({ type: 'divider', date: msg._creationTime || msg.createdAt, id: `divider-${index}` });
         }
@@ -166,15 +167,26 @@ const Message = () => {
     const isMine = (msg) => msg.senderId?._id === user?._id;
 
     return (
-        <SafeAreaView edges={['top']} className="flex-1 bg-white">
+        // ✅ FIX 1: added 'bottom' edge so input bar clears the home indicator on iPhone
+        <SafeAreaView edges={['top', 'bottom']} className="flex-1 bg-white">
+
+            {/* ✅ FIX 2: correct behavior per platform + proper vertical offset */}
             <KeyboardAvoidingView
-                behavior="padding"
+                behavior={Platform.OS === "ios" ? "padding" : "height"}
                 className="flex-1 bg-white"
-                keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 90}
+                keyboardVerticalOffset={Platform.OS === "ios" ? 95 : 0}
             >
                 {/* Header */}
-                <View className="flex-row items-center px-4 py-3 bg-white border-b border-gray-100"
-                    style={{ elevation: 2, shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 4, shadowOffset: { width: 0, height: 1 } }}>
+                <View
+                    className="flex-row items-center px-4 py-3 bg-white border-b border-gray-100"
+                    style={{
+                        elevation: 2,
+                        shadowColor: '#000',
+                        shadowOpacity: 0.04,
+                        shadowRadius: 4,
+                        shadowOffset: { width: 0, height: 1 },
+                    }}
+                >
                     <TouchableOpacity
                         activeOpacity={0.7}
                         onPress={() => router.back()}
@@ -186,51 +198,60 @@ const Message = () => {
                     {/* Avatar + name */}
                     <View className="size-10 rounded-full bg-blue-100 items-center justify-center mr-3 overflow-hidden">
                         {selectedUser?.image_url ? (
-                            <Image source={{ uri: selectedUser.image_url }} className="size-full" resizeMode="cover" />
+                            <Image
+                                source={{ uri: selectedUser.image_url }}
+                                className="size-full"
+                                resizeMode="cover"
+                            />
                         ) : (
                             <Text className="text-[#124BCC] font-bold text-base">
                                 {selectedUser?.name?.charAt(0)?.toUpperCase() ?? '?'}
                             </Text>
                         )}
                     </View>
+
                     <View className="flex-1">
                         <Text className="text-base font-bold text-gray-800" numberOfLines={1}>
                             {selectedUser?.name ?? t("Chats")}
                         </Text>
                         <Text className="text-xs text-[#124BCC]">
-                            {selectedUser?.role === "client" ? "Client" : selectedUser?.role === "admin" ? "Admin" : t("LandLord")}
+                            {selectedUser?.role === "client"
+                                ? "Client"
+                                : selectedUser?.role === "admin"
+                                    ? "Admin"
+                                    : t("LandLord")}
                         </Text>
                     </View>
                 </View>
 
                 {/* Messages */}
                 <View className="flex-1" style={{ backgroundColor: '#e8ddd4' }}>
-                    {/* WhatsApp-like tiled pattern overlay */}
-                    <View style={{
-                        position: 'absolute', top: 8, left: 0, right: 0, bottom: 0,
-                        opacity: 0.18,
-                        backgroundImage: undefined,
-                    }}>
+                    {/* background pattern */}
+                    <View style={{ position: 'absolute', top: 8, left: 0, right: 0, bottom: 0, opacity: 0.18 }}>
                         {Array.from({ length: 60 }).map((_, i) => (
-                            <View key={i} style={{
-                                position: 'absolute',
-                                top: Math.floor(i / 6) * 70 - 10,
-                                left: (i % 6) * 70 - 10,
-                                width: 52,
-                                height: 52,
-                                borderRadius: 26,
-                                borderWidth: 1.5,
-                                borderColor: '#124BCC',
-                                opacity: 0.25,
-                            }} />
+                            <View
+                                key={i}
+                                style={{
+                                    position: 'absolute',
+                                    top: Math.floor(i / 6) * 70 - 10,
+                                    left: (i % 6) * 70 - 10,
+                                    width: 52,
+                                    height: 52,
+                                    borderRadius: 26,
+                                    borderWidth: 1.5,
+                                    borderColor: '#124BCC',
+                                    opacity: 0.25,
+                                }}
+                            />
                         ))}
                     </View>
+
+                    {/* ✅ FIX 3: removed onLayout scrollToEnd — only keep onContentSizeChange */}
                     <ScrollView
                         className="flex-1 px-3"
                         ref={scrollRef}
                         showsVerticalScrollIndicator={false}
                         keyboardShouldPersistTaps="handled"
-                        onLayout={() => scrollRef?.current?.scrollToEnd({ animated: true })}
                         onContentSizeChange={() => scrollRef?.current?.scrollToEnd({ animated: true })}
                         contentContainerStyle={{ paddingVertical: 12 }}
                     >
@@ -258,7 +279,11 @@ const Message = () => {
                                     {!mine && (
                                         <View className="size-7 rounded-full bg-blue-100 items-center justify-center mr-2 mb-1 overflow-hidden shrink-0">
                                             {selectedUser?.image_url ? (
-                                                <Image source={{ uri: selectedUser.image_url }} className="size-full" resizeMode="cover" />
+                                                <Image
+                                                    source={{ uri: selectedUser.image_url }}
+                                                    className="size-full"
+                                                    resizeMode="cover"
+                                                />
                                             ) : (
                                                 <Text className="text-[#124BCC] font-bold text-xs">
                                                     {getSenderName(item)?.charAt(0)?.toUpperCase() ?? '?'}
@@ -268,7 +293,7 @@ const Message = () => {
                                     )}
 
                                     <View className={`max-w-[72%] ${mine ? 'items-end' : 'items-start'}`}>
-                                        {/* Sender name — only show for receiver */}
+                                        {/* Sender name — only for receiver */}
                                         {!mine && (
                                             <Text className="text-xs text-gray-400 mb-1 ml-1 font-medium">
                                                 {getSenderName(item)}
@@ -281,7 +306,13 @@ const Message = () => {
                                                 ? 'bg-[#1e263a] rounded-t-2xl rounded-bl-2xl rounded-br-sm'
                                                 : 'bg-white rounded-t-2xl rounded-br-2xl rounded-bl-sm'
                                                 }`}
-                                            style={{ elevation: 1, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 3, shadowOffset: { width: 0, height: 1 } }}
+                                            style={{
+                                                elevation: 1,
+                                                shadowColor: '#000',
+                                                shadowOpacity: 0.06,
+                                                shadowRadius: 3,
+                                                shadowOffset: { width: 0, height: 1 },
+                                            }}
                                         >
                                             {item.image_url && (
                                                 <Image
@@ -307,10 +338,14 @@ const Message = () => {
                         })}
 
                         {/* Image preview before sending */}
-                        {messagez.image_url && (
+                        {messagez.image_url !== "" && (
                             <View className="mb-2 flex-row justify-end">
                                 <View className="relative">
-                                    <Image source={{ uri: messagez.image_url }} className="w-48 h-40 rounded-2xl" resizeMode="cover" />
+                                    <Image
+                                        source={{ uri: messagez.image_url }}
+                                        className="w-48 h-40 rounded-2xl"
+                                        resizeMode="cover"
+                                    />
                                     <TouchableOpacity
                                         onPress={removeImage}
                                         activeOpacity={0.7}
@@ -326,44 +361,57 @@ const Message = () => {
                 </View>
 
                 {/* Input bar */}
-                {
-                    <View
-                        className="px-3 py-2 bg-white border-t border-gray-100 flex-row items-end"
-                        style={{ elevation: 4, shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 6, shadowOffset: { width: 0, height: -1 } }}
+                <View
+                    className="px-3 py-2 bg-white border-t border-gray-100 flex-row items-end"
+                    style={{
+                        elevation: 4,
+                        shadowColor: '#000',
+                        shadowOpacity: 0.04,
+                        shadowRadius: 6,
+                        shadowOffset: { width: 0, height: -1 },
+                    }}
+                >
+                    <TouchableOpacity
+                        activeOpacity={0.7}
+                        className={`${messagez.image_url ? "bg-[#124BCC]" : "bg-gray-100"} rounded-full p-2 mr-2 mb-1`}
+                        onPress={pickImage}
                     >
-                        <TouchableOpacity
-                            activeOpacity={0.7}
-                            className={`${messagez.image_url ? "bg-[#124BCC]" : "bg-gray-100"} rounded-full p-2 mr-2 mb-1`}
-                            onPress={pickImage}
-                        >
-                            <Entypo name="camera" size={20} color={messagez.image_url ? "white" : "#6b7280"} />
-                        </TouchableOpacity>
+                        <Entypo
+                            name="camera"
+                            size={20}
+                            color={messagez.image_url ? "white" : "#6b7280"}
+                        />
+                    </TouchableOpacity>
 
-                        <View className="flex-1 bg-gray-100 rounded-2xl px-4 py-2 mr-2 flex-row items-end">
-                            <TextInput
-                                placeholder={t("Enter your message")}
-                                multiline={true}
-                                placeholderTextColor="#9ca3af"
-                                className="flex-1 text-gray-800 text-sm"
-                                style={{ maxHeight: 100, minHeight: 20 }}
-                                value={messagez.text}
-                                numberOfLines={4}
-                                onChangeText={(e) => setMessage({ ...messagez, text: e })}
-                            />
-                        </View>
-
-                        <TouchableOpacity
-                            activeOpacity={0.7}
-                            className={`${messagez.image_url !== "" || messagez.text !== "" ? "bg-[#124BCC]" : "bg-gray-200"} rounded-full p-3 mb-1`}
-                            onPress={handleSendMessage}
-                        >
-                            <Entypo name="paper-plane" size={18} color={messagez.image_url !== "" || messagez.text !== "" ? "white" : "#9ca3af"} />
-                        </TouchableOpacity>
+                    <View className="flex-1 bg-gray-100 rounded-2xl px-4 py-2 mr-2 flex-row items-end">
+                        <TextInput
+                            placeholder={t("Enter your message")}
+                            multiline={true}
+                            placeholderTextColor="#9ca3af"
+                            className="flex-1 text-gray-800 text-sm"
+                            style={{ maxHeight: 100, minHeight: 20 }}
+                            value={messagez.text}
+                            numberOfLines={4}
+                            onChangeText={(e) => setMessage({ ...messagez, text: e })}
+                        />
                     </View>
-            }
+
+                    <TouchableOpacity
+                        activeOpacity={0.7}
+                        className={`${messagez.image_url !== "" || messagez.text !== "" ? "bg-[#124BCC]" : "bg-gray-200"} rounded-full p-3 mb-1`}
+                        onPress={handleSendMessage}
+                    >
+                        <Entypo
+                            name="paper-plane"
+                            size={18}
+                            color={messagez.image_url !== "" || messagez.text !== "" ? "white" : "#9ca3af"}
+                        />
+                    </TouchableOpacity>
+                </View>
+
             </KeyboardAvoidingView>
         </SafeAreaView>
-    )
-}
+    );
+};
 
-export default Message
+export default Message;

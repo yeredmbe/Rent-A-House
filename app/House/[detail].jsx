@@ -4,6 +4,7 @@ import * as Haptics from 'expo-haptics';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { ActivityIndicator, Dimensions, FlatList, Image, ImageBackground, KeyboardAvoidingView, Linking, Modal, Platform, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { showToast } from 'rn-snappy-toast';
 import { AuthErrorModal } from '../../components/AuthErrorModal';
 import icons from '../../constant/icons';
@@ -49,7 +50,6 @@ const DetailPage = () => {
   const { user, updateFavorites } = useStore();
 
   const Home = useCachedQuery(api.homes.getHome, detail ? { homeId: detail } : "skip", `cache_home_detail_${detail}`);
-  // const USer = useQuery(api.users.Home.userId)
   const isLoading = Home === undefined;
   const addReviewMutation = useMutation(api.homes.addReview);
   const toggleFavMutation = useMutation(api.homes.toggleFavorite);
@@ -70,8 +70,6 @@ const DetailPage = () => {
     if (!text.trim() || isClicked) return;
     setIsClicked(true);
     try {
-      // BUG FIX: pass homeId and userId correctly — addReview only needs homeId + text
-      // userId was being passed but the Convex mutation resolves it server-side
       await addReviewMutation({ homeId: Home?._id, userId: user?._id, text });
       setText("");
       setIsOpen(false);
@@ -171,7 +169,6 @@ const DetailPage = () => {
             <View>
               <View className="px-2 flex-row items-center justify-between">
                 <View>
-                  {/* BUG FIX: guard with ?._id before rendering the owner link */}
                   {user?._id !== Home?.userId?._id && Home?.userId?._id && (
                     <TouchableOpacity
                       activeOpacity={0.7}
@@ -217,8 +214,8 @@ const DetailPage = () => {
               </View>
 
               <TouchableOpacity activeOpacity={0.7} className="flex flex-row items-center" onPress={() => setIsOpen(true)}>
-                <Image source={icons.review} className="size-6" />
-                <Text className="text-gray-600 ml-1 font-Churchill">
+                <Image source={icons.feedback} className="size-6" tintColor={"#124BCC"} />
+                <Text className="text-[#124BCC] ml-1 font-Churchill">
                   {Home?.reviews?.length === 0
                     ? "No review"
                     : `${Home?.reviews?.length} ${Home?.reviews?.length === 1 ? "review" : "reviews"}`}
@@ -258,87 +255,129 @@ const DetailPage = () => {
         </ScrollView>
 
         {/* Reviews Modal */}
-        <Modal visible={isOpen} onRequestClose={() => setIsOpen(false)} animationType='slide' presentationStyle='pageSheet'>
-          <KeyboardAvoidingView
-            style={{ flex: 1 }}
-            behavior="padding"
-            keyboardVerticalOffset={Platform.OS === "ios" ? 20 : 90}
-          >
-            <View className="my-2 p-3 w-full justify-end items-end">
-              <TouchableOpacity activeOpacity={0.6} onPress={() => setIsOpen(false)}>
-                <Image source={icons.cancel} tintColor="#123BCC" className="size-7" />
-              </TouchableOpacity>
-            </View>
-
-            <FlatList
-              data={Home?.reviews}
-              keyExtractor={(item, index) => item?._id?.toString() ?? index.toString()}
-              nestedScrollEnabled
-              keyboardShouldPersistTaps="handled"
-              className="p-4"
-              contentContainerStyle={{ paddingBottom: 140 }}
-              renderItem={({ item }) => (
+        <Modal
+          visible={isOpen}
+          onRequestClose={() => setIsOpen(false)}
+          animationType='slide'
+          statusBarTranslucent={false}
+        >
+          {/* ✅ FIX: SafeAreaView edges top+bottom prevents modal from
+              overlapping the status bar and home indicator on all devices */}
+          <SafeAreaView edges={['top', 'bottom']} style={{ flex: 1, backgroundColor: '#fff' }}>
+            <KeyboardAvoidingView
+              style={{ flex: 1, justifyContent: 'space-between' }}
+              behavior={Platform.OS === "ios" ? "padding" : "height"}
+              keyboardVerticalOffset={Platform.OS === "ios" ? 20 : 0}
+            >
+              {/* Header */}
+              <View
+                className="flex-row items-center justify-between px-4 pt-4 pb-3 border-b border-gray-200"
+                style={{
+                  shadowColor: '#000',
+                  shadowOpacity: 0.03,
+                  shadowRadius: 3,
+                  shadowOffset: { width: 0, height: 1 },
+                  elevation: 2,
+                }}
+              >
+                <Text className="text-base font-bold text-gray-800">Reviews</Text>
                 <TouchableOpacity
-                  onPress={() => {
-                    const reviewerId = item?.user?._id;
-                    if (!reviewerId) return;
-                    router.push(`/ProfileUser/${reviewerId}`);
-                    setIsOpen(false);
-                  }}
-                  activeOpacity={0.7}
-                  className="w-full flex flex-row mt-3"
+                  activeOpacity={0.6}
+                  onPress={() => setIsOpen(false)}
+                  className="rounded-full p-2"
                 >
+                  <Image source={icons.cancel} tintColor="#124BCC" className="size-5" />
+                </TouchableOpacity>
+              </View>
+
+              {/* Review list */}
+              <FlatList
+                data={Home?.reviews}
+                keyExtractor={(item, index) => item?._id?.toString() ?? index.toString()}
+                nestedScrollEnabled
+                keyboardShouldPersistTaps="handled"
+                className="p-4"
+                contentContainerStyle={{ paddingBottom: 20 }}
+                style={{ flex: 1 }}
+                renderItem={({ item }) => (
+                  <TouchableOpacity
+                    onPress={() => {
+                      const reviewerId = item?.user?._id;
+                      if (!reviewerId) return;
+                      router.push(`/ProfileUser/${reviewerId}`);
+                      setIsOpen(false);
+                    }}
+                    activeOpacity={0.7}
+                    className="w-full flex flex-row mt-3"
+                  >
+                    <Image
+                      source={
+                        item?.user?.image_url
+                          ? { uri: item.user.image_url }
+                          : image.load
+                      }
+                      className="size-10 rounded-full border"
+                    />
+                    <View className="ml-2 flex-1">
+                      <Text className="text-md text-gray-500">{item?.text}</Text>
+                      <View className="flex flex-row items-center justify-start">
+                        <Text className="text-gray-500 font-bold text-sm mr-3">
+                          {item?.user?.name ?? 'User'}
+                        </Text>
+                        <Text numberOfLines={1} className="text-gray-500 text-sm">
+                          {formatRelativeTime(item?._creationTime)}
+                        </Text>
+                      </View>
+                    </View>
+                  </TouchableOpacity>
+                )}
+                ListEmptyComponent={() => (
+                  <View className="w-full bg-white items-center justify-center my-5 p-4">
+                    <Image source={icons.evaluate} tintColor="gray" className="size-96 opacity-40" resizeMode='contain' />
+                    <Text className="text-gray-400 mt-2">No review yet.</Text>
+                    <Text className="text-gray-400 mt-2">Be the first to review this property!</Text>
+                  </View>
+                )}
+              />
+
+              {/* Input bar */}
+              <View
+                className="flex flex-row items-end p-4 bg-white border-t border-gray-100"
+                style={{
+                  shadowColor: '#000',
+                  shadowOpacity: 0.04,
+                  shadowRadius: 6,
+                  shadowOffset: { width: 0, height: -1 },
+                  elevation: 4,
+                }}
+              >
+                <View className="flex flex-row justify-start items-center flex-1">
                   <Image
-                    source={
-                      item?.user?.image_url
-                        ? { uri: item.user.image_url }
-                        : image.load
-                    }
+                    source={user?.image_url ? { uri: user.image_url } : image.load}
                     className="size-10 rounded-full border"
                   />
-                  <View className="ml-2">
-                    <Text className="text-md text-gray-500">{item?.text}</Text>
-                    <View className="flex flex-row items-center justify-start">
-                      <Text className="text-gray-500 font-bold text-sm mr-3">
-                        {item?.user?.name ?? 'User'}
-                      </Text>
-                      <Text numberOfLines={1} className="text-gray-500 text-sm">{formatRelativeTime(item?._creationTime)}</Text>
-                    </View>
-                  </View>
-                </TouchableOpacity>
-              )}
-              ListEmptyComponent={() => (
-                <View className="w-full h-full bg-white items-center justify-center my-5 p-4">
-                  <Image source={icons.evaluate} tintColor="gray" className="size-96 opacity-40" resizeMode='contain' />
-                  <Text className="text-gray-400 mt-2">No review yet.</Text>
-                  <Text className="text-gray-400 mt-2">Be the first to review this property!</Text>
+                  <TextInput
+                    placeholder='Add a review'
+                    placeholderTextColor='gray'
+                    onChangeText={(t) => setText(t)}
+                    value={text}
+                    className='border border-gray-200 rounded-full p-2 w-5/6 ml-3'
+                    multiline
+                    textAlignVertical='top'
+                  />
                 </View>
-              )}
-            />
-
-            <View className="flex flex-row items-end p-4 my-2 bg-white">
-              <View className="flex flex-row justify-start items-center flex-1">
-                <Image source={user?.image_url ? { uri: user.image_url } : image.load} className="size-10 rounded-full border" />
-                <TextInput
-                  placeholder='Add a review'
-                  placeholderTextColor='gray'
-                  onChangeText={(t) => setText(t)}
-                  value={text}
-                  className='border border-gray-200 rounded-full p-2 w-5/6 ml-3'
-                  multiline
-                  textAlignVertical='top'
-                />
+                <TouchableOpacity
+                  activeOpacity={0.7}
+                  className={`${text.trim() ? "bg-[#124BCC]" : "bg-gray-200"} opacity-85 rounded-full p-2 ml-2`}
+                  onPress={handleSendMessage}
+                  disabled={!text.trim()}
+                >
+                  <Entypo name="paper-plane" size={24} color={text.trim() ? "white" : "gray"} />
+                </TouchableOpacity>
               </View>
-              <TouchableOpacity
-                activeOpacity={0.7}
-                className={`${text.trim() ? "bg-[#124BCC]" : "bg-gray-200"} opacity-85 rounded-full p-2 ml-2`}
-                onPress={handleSendMessage}
-                disabled={!text.trim()}
-              >
-                <Entypo name="paper-plane" size={24} color={text.trim() ? "white" : "gray"} />
-              </TouchableOpacity>
-            </View>
-          </KeyboardAvoidingView>
+
+            </KeyboardAvoidingView>
+          </SafeAreaView>
         </Modal>
       </View>
     </View>

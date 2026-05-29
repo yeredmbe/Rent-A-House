@@ -17,6 +17,7 @@ import {
 import BouncyCheckbox from 'react-native-bouncy-checkbox';
 import DropShadow from 'react-native-drop-shadow';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { showToast } from 'rn-snappy-toast';
 import { AuthErrorModal } from '../../components/AuthErrorModal';
 import CustomButton from '../../components/CustomButton';
 import InputField from '../../components/InputField';
