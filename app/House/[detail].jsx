@@ -84,6 +84,14 @@ const DetailPage = () => {
     const ownerId = Home?.userId;
     if (!ownerId) return;
     if (user?._id === ownerId) return;
+    if (!user?.isVerified) {
+      showToast({
+        message: "You need to verify your account to message",
+        duration: 5000, type: 'warning', position: 'top', title: 'Error',
+        animationType: 'slide', progressBar: true, richColors: true,
+      });
+      return;
+    }
     setSelectedUser(Home?.owner ?? null);
     router.push(`/Message/${ownerId}`);
   };

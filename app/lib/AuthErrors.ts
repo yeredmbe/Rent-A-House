@@ -110,6 +110,18 @@ export const AUTH_ERRORS: Record<string, { titleKey: string; messageKey: string 
         titleKey: "authErrors.somethingWentWrongTitle",
         messageKey: "authErrors.somethingWentWrongMessage",
     },
+    "NOT_VERIFIED": {
+        titleKey: "authErrors.notVerifiedTitle",
+        messageKey: "authErrors.notVerifiedMessage",
+    },
+    "NOT_LANDLORD": {
+        titleKey: "authErrors.notLandlordTitle",
+        messageKey: "authErrors.notLandlordMessage",
+    },
+    "NOT_CLIENT": {
+        titleKey: "authErrors.notClientTitle",
+        messageKey: "authErrors.notClientMessage",
+    },
 };
 
 export const getAuthError = (code: string): { title: string; message: string } => {

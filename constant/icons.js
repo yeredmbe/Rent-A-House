@@ -54,11 +54,14 @@ import translate from '../assets/icons/translate.png';
 import user from '../assets/icons/user.png';
 import userr from '../assets/icons/userr.png';
 import security from '../assets/icons/verified.png';
+import verify from "../assets/icons/verify.png";
 import whatsapp from '../assets/icons/whatsapp.png';
 
 
 export default {
     addition,
+    feedback,
+    verify,
     bell,
     bells,
     home,
