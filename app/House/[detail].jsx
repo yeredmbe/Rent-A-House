@@ -3,6 +3,7 @@ import { useMutation } from "convex/react";
 import * as Haptics from 'expo-haptics';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, Dimensions, FlatList, Image, ImageBackground, KeyboardAvoidingView, Linking, Modal, Platform, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { showToast } from 'rn-snappy-toast';
@@ -48,6 +49,7 @@ const DetailPage = () => {
   const [isLoaded, setIsLoading] = useState(false);
   const { detail } = useLocalSearchParams();
   const { user, updateFavorites } = useStore();
+  const { t } = useTranslation()
 
   const Home = useCachedQuery(api.homes.getHome, detail ? { homeId: detail } : "skip", `cache_home_detail_${detail}`);
   const isLoading = Home === undefined;
@@ -86,7 +88,7 @@ const DetailPage = () => {
     if (user?._id === ownerId) return;
     if (!user?.isVerified) {
       showToast({
-        message: "You need to verify your account to message",
+        message: t("You need to verify your account to message"),
         duration: 5000, type: 'warning', position: 'top', title: 'Error',
         animationType: 'slide', progressBar: true, richColors: true,
       });

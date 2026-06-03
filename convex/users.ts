@@ -79,7 +79,7 @@ export const register = mutation({
     const welcomeText =
       role === "client"
         ? `You're In! Let's Get Your Profile Ready 🏠\n\nHello ${args.name},\n\nA massive welcome to Rent-A-House! ✨\n\nPlease take a moment to finish setting up your profile. By adding your location, you'll be the first to know when a perfect house pops up in your area! 🚀\n\nHappy house hunting!\nThe Rent-A-House Team\n\n\n\n\nVous êtes inscrit ! Préparons votre profil 🏠\n\nBonjour ${args.name},\n\nUn grand bienvenue sur Rent-A-House ! ✨\n\nVeuillez prendre un moment pour finaliser la configuration de votre profil. En ajoutant votre localisation, vous serez parmi les premiers informés lorsqu’une maison parfaite sera disponible dans votre région ! 🚀\n\nBonne recherche de maison !\nL’équipe Rent-A-House `
-        : `Welcome to Rent-A-House, dear Landlord! 🏠✨\n\nHello ${args.name},\n\nWelcome as a landlord on our platform. 🤝\n\nFinalize your profile to start publishing listings and reach potential tenants. 📍\n\nThe Rent-A-House Team\n\n\n\n\nBienvenue sur Rent-A-House, cher propriétaire ! 🏠✨\n\nBonjour ${args.name},\n\nBienvenue en tant que propriétaire sur notre plateforme. 🤝\n\nFinalisez votre profil pour commencer à publier des annonces et atteindre des locataires potentiels. 📍\n\nL’équipe Rent-A-House`;
+        : `\n\n\nWelcome to Rent-A-House, dear Landlord! 🏠✨\n\nHello ${args.name},\n\nWelcome as a landlord on our platform. 🤝\n\nFinalize your profile to start publishing listings and reach potential tenants. 📍\n\nThe Rent-A-House Team\n\n\n\n\nBienvenue sur Rent-A-House, cher propriétaire ! 🏠✨\n\nBonjour ${args.name},\n\nBienvenue en tant que propriétaire sur notre plateforme. 🤝\n\nFinalisez votre profil pour commencer à publier des annonces et atteindre des locataires potentiels. 📍\n\nL’équipe Rent-A-House`;
 
     const messageId = await ctx.db.insert("messages", {
       senderId: admin._id,
@@ -111,8 +111,8 @@ export const register = mutation({
       // Don't throw — user still gets the in-app notification
     }
 
-    // 8. Schedule follow-up message after 5 minutes
-    await ctx.scheduler.runAfter(5 * 60 * 1000, api.users.sendFollowUpMessage, {
+    // 8. Schedule follow-up message after 10 minutes
+    await ctx.scheduler.runAfter(10 * 60 * 1000, api.users.sendFollowUpMessage, {
       userId,
       adminId: admin._id,
       name: args.name,
@@ -135,7 +135,7 @@ export const sendFollowUpMessage = mutation({
 
     const followUpText = role === "client"
       ? `Still there, ${name}? Just a quick reminder to complete your profile! 🏡\n\nTo ensure a safe community, please verify your account by sending us your full name, an image of your ID card, and your location. Let us know if you need any help finding the perfect home.\n\n\nToujours là, ${name} ? Petit rappel pour compléter votre profil ! 🏡\n\nPour garantir une communauté sécurisée, veuillez vérifier votre compte en nous envoyant votre nom complet, une image de votre carte d'identité et votre localisation. Faites-nous savoir si vous avez besoin d'aide pour trouver la maison parfaite.`
-      : `Hello again, ${name}! Don't forget to complete your landlord profile! 🤝\n\nTo start publishing listings and for the safety of our tenants, please verify your account by sending us your full name, an image of your ID card, your location, and a document proving you are the house owner. We're here to help!\n\n\nBonjour à nouveau, ${name} ! N'oubliez pas de compléter votre profil de propriétaire ! 🤝\n\nPour commencer à publier des annonces et pour la sécurité de nos locataires, veuillez vérifier votre compte en nous envoyant votre nom complet, une image de votre carte d'identité, votre localisation, ainsi qu'un document prouvant que vous êtes le propriétaire de la maison. Nous sommes là pour vous aider !`;
+      : `\n\n\nHello again, ${name}! Don't forget to complete your landlord profile! 🤝\n\nTo start publishing listings and for the safety of our tenants, please verify your account by sending us your full name, an image of your ID card, your location, and a document proving you are the house owner. We're here to help!\n\n\nBonjour à nouveau, ${name} ! N'oubliez pas de compléter votre profil de propriétaire ! 🤝\n\nPour commencer à publier des annonces et pour la sécurité de nos locataires, veuillez vérifier votre compte en nous envoyant votre nom complet, une image de votre carte d'identité, votre localisation, ainsi qu'un document prouvant que vous êtes le propriétaire de la maison. Nous sommes là pour vous aider !`;
 
     const messageId = await ctx.db.insert("messages", {
       senderId: adminId,
@@ -502,14 +502,47 @@ export const getLatestAppVersion = query({
 
 // ─── VERIFY USER ──────────────────────────────────────────────────────────────
 export const verifyUser = mutation({
-  args: { userId: v.id("users"), isVerified: v.boolean() },
-  handler: async (ctx, { userId, isVerified }) => {
+  args: { userId: v.id("users"), isVerified: v.boolean(), senderId: v.id("users") },
+  handler: async (ctx, { userId, isVerified, senderId }) => {
     const user = await ctx.db.get(userId);
     if (!user) throw new ConvexError("USER_NOT_FOUND");
-    if(user.role === "admin") {
+    if (user.role === "admin") {
       throw new ConvexError("ADMIN_CANNOT_BE_VERIFIED");
     }
+
     await ctx.db.patch(userId, { isVerified });
+
+    const sender = await ctx.db.get(senderId);
+    if (!sender) throw new ConvexError("SENDER_NOT_FOUND");
+
+    const messageText = `Hello ${user.name}, your account has been verified. You can now use Rent-A-House with full access.`;
+
+    const messageId = await ctx.db.insert("messages", {
+      senderId,
+      receiverId: userId,
+      text: messageText,
+      readByReceiver: false,
+      readBySender: true,
+    });
+
+    await ctx.db.insert("notifications", {
+      senderId,
+      receiverId: userId,
+      notification_type: "system",
+      messageId,
+      isRead: false,
+    });
+
+    try {
+      await ctx.runMutation(api.notifications.sendPushNotification, {
+        userId,
+        title: "Account Verified ✅",
+        body: `Hi ${user.name}, your Rent-A-House account has been verified successfully!`,
+        data: { messageId: messageId.toString() },
+      });
+    } catch (err) {
+      console.warn("[users] Failed to send verification push notification:", err);
+    }
   },
 });
 

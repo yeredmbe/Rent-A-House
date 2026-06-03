@@ -202,7 +202,7 @@ export const getHome = query({
     return {
       ...home,
       owner: owner
-        ? { name: owner.name, email: owner.email, image_url: owner.image_url }
+        ? { name: owner.name, email: owner.email, image_url: owner.image_url, role: owner.role }
         : null,
       reviews: reviewsWithUsers,
     };
@@ -243,7 +243,8 @@ export const filterHomes = query({
     category: v.optional(categoryValidator),
     region: v.optional(regionValidator),
     address: v.optional(v.string()),
-    description: v.optional(v.string())
+    description: v.optional(v.string()),
+    searchQuery: v.optional(v.string()), // ← add a general search term
   },
   handler: async (ctx, args) => {
     let homes = await ctx.db
@@ -252,17 +253,34 @@ export const filterHomes = query({
       .order("desc")
       .collect();
 
-    if (args.category) homes = homes.filter((h) => h.category === args.category);
-    if (args.region) homes = homes.filter((h) => h.region === args.region || h.address === args.address || h.description === args.description);
-    if (args.minPrice !== undefined)
+    // Structured filters (exact match is fine here)
+    if (args.category) {
+      homes = homes.filter((h) => h.category === args.category);
+    }
+    if (args.region) {
+      homes = homes.filter((h) => h.region === args.region);
+    }
+    if (args.minPrice !== undefined) {
       homes = homes.filter((h) => h.price >= args.minPrice!);
-    if (args.maxPrice !== undefined)
+    }
+    if (args.maxPrice !== undefined) {
       homes = homes.filter((h) => h.price <= args.maxPrice!);
+    }
+
+    // Free-text search: match any character in address, region, or description
+    if (args.searchQuery && args.searchQuery.trim() !== '') {
+      const q = args.searchQuery.toLowerCase().trim();
+      homes = homes.filter((h) => {
+        const inAddress     = h.address?.toLowerCase().includes(q);
+        const inDescription = h.description?.toLowerCase().includes(q);
+        const inRegion      = h.region?.toLowerCase().includes(q);
+        return inAddress || inDescription || inRegion;
+      });
+    }
 
     return { homes, count: homes.length };
   },
 });
-
 // ─── GET ALL HOMES FOR A USER ─────────────────────────────────────────────────
 export const getUserHomes = query({
   args: { userId: v.id("users") },

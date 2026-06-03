@@ -105,7 +105,13 @@ const Message = () => {
               <View className="mt-1">
                 <View className="self-start bg-blue-50 rounded-full px-2 py-0.5">
                   <Text className="text-xs text-[#124BCC] font-medium">
-                    {item.role === "landLord" ? t("LandLord") : item.role === "client" ? "client" : "admin"}
+                    {item.role === "client"
+                      ? "Client"
+                      : item.role === "admin"
+                        ? "Admin"
+                        : item.role === "landLord"
+                          ? t("LandLord")
+                          : t("User")}
                   </Text>
                 </View>
               </View>

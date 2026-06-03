@@ -20,7 +20,7 @@ const Message = () => {
         text: '',
         image_url: ''
     });
-    const { selectedUser } = messageStore()
+    const { selectedUser, setSelectedUser } = messageStore()
     const { user } = useStore()
     const { message } = useLocalSearchParams()
     const scrollRef = useRef();
@@ -31,6 +31,23 @@ const Message = () => {
         (user?._id && message) ? { userA: user._id, userB: message } : "skip",
         `cache_messages_${user?._id}_${message}`
     ) ?? [];
+
+    const selectedUserFromServer = useCachedQuery(
+        api.users.getById,
+        message ? { userId: message } : "skip",
+        `cache_user_${message}`
+    );
+
+    const activeSelectedUser = selectedUser?.role
+        ? selectedUser
+        : selectedUserFromServer
+            ? {
+                ...selectedUserFromServer,
+                _id: selectedUserFromServer._id,
+                name: selectedUserFromServer.name,
+                role: selectedUserFromServer.role,
+            }
+            : selectedUser;
 
     const sendMessageMutation = useMutation(api.messages.sendMessage);
 
@@ -197,29 +214,31 @@ const Message = () => {
 
                     {/* Avatar + name */}
                     <View className="size-10 rounded-full bg-blue-100 items-center justify-center mr-3 overflow-hidden">
-                        {selectedUser?.image_url ? (
+                        {activeSelectedUser?.image_url ? (
                             <Image
-                                source={{ uri: selectedUser.image_url }}
+                                source={{ uri: activeSelectedUser.image_url }}
                                 className="size-full"
                                 resizeMode="cover"
                             />
                         ) : (
                             <Text className="text-[#124BCC] font-bold text-base">
-                                {selectedUser?.name?.charAt(0)?.toUpperCase() ?? '?'}
+                                {activeSelectedUser?.name?.charAt(0)?.toUpperCase() ?? '?'}
                             </Text>
                         )}
                     </View>
 
                     <View className="flex-1">
                         <Text className="text-base font-bold text-gray-800" numberOfLines={1}>
-                            {selectedUser?.name ?? t("Chats")}
+                            {activeSelectedUser?.name ?? t("Chats")}
                         </Text>
                         <Text className="text-xs text-[#124BCC]">
-                            {selectedUser?.role === "client"
+                            {activeSelectedUser?.role === "client"
                                 ? "Client"
-                                : selectedUser?.role === "admin"
+                                : activeSelectedUser?.role === "admin"
                                     ? "Admin"
-                                    : t("LandLord")}
+                                    : activeSelectedUser?.role === "landLord"
+                                        ? t("LandLord")
+                                        : t("User")}
                         </Text>
                     </View>
                 </View>
@@ -362,7 +381,7 @@ const Message = () => {
 
                 {/* Input bar */}
                 <View
-                    className="px-3 py-2 bg-white border-t border-gray-100 flex-row items-end"
+                    className="px-3 py-2 mb-3 bg-white border-t border-gray-100 flex-row items-end"
                     style={{
                         elevation: 4,
                         shadowColor: '#000',

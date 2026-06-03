@@ -2,36 +2,43 @@
   "expo": {
     "name": "RentAHouse",
     "slug": "Rent-A-House",
-    "version": "3.06",
+    "version": "3.08",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "rentahouse",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
+
     "splash": {
       "image": "./assets/images/splash.png",
       "resizeMode": "cover",
       "backgroundColor": "#ffffff"
     },
+
     "ios": {
       "supportsTablet": true
     },
+
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#ffffff",
         "backgroundImage": "./assets/images/adaptive-icon.png"
       },
+
       "edgeToEdgeEnabled": true,
       "softwareKeyboardLayoutMode": "pan",
       "predictiveBackGestureEnabled": false,
       "package": "com.anonymous.RentAHouse"
     },
+
     "web": {
       "output": "static",
       "favicon": "./assets/images/adaptive-icon.png"
     },
+
     "plugins": [
       "expo-router",
+
       [
         "expo-splash-screen",
         {
@@ -41,8 +48,16 @@
           "resizeMode": "contain"
         }
       ],
+
       "expo-web-browser",
       "expo-localization",
+     ["expo-notifications", {
+  "icon": "./assets/images/adaptive-icon.png",
+  "color": "#ffffff",
+  "iosDisplayInForeground": true
+}],
+      "expo-font",
+
       [
         "expo-build-properties",
         {
@@ -58,19 +73,21 @@
             }
           }
         }
-      ],
-      "expo-font"
+      ]
     ],
+
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
     },
+
     "extra": {
       "router": {},
       "eas": {
         "projectId": "b5f1e9d5-5e73-4bdb-8540-147020f287ba"
       }
     },
+
     "owner": "yungbrat"
   }
 }

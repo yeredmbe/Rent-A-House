@@ -66,7 +66,16 @@ const Notification = () => {
       if (['message', 'welcome', 'system'].includes(item.notification_type)) {
         const sender = item.senderId;
         if (sender?._id) {
-          setSelectedUser({ _id: sender._id, name: sender.name ?? 'Unknown' });
+          const normalizedRole =
+            sender.role === 'client' || sender.role === 'landLord' || sender.role === 'admin'
+              ? sender.role
+              : undefined;
+
+          setSelectedUser({
+            _id: sender._id,
+            name: sender.name ?? 'Unknown',
+            role: normalizedRole,
+          });
           path = `/Message/${sender._id}`;
 
           if (item.notification_type === 'message' && user?._id) {

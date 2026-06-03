@@ -32,7 +32,7 @@ const Home = () => {
 useEffect(() => {
   const checkAndUpdateAppVersion = async () => {
     const currentAppVersion = Constants.expoConfig?.version;
-
+    
     if (user && currentAppVersion && latestAppVersion) {
       // Check if current version differs from latest version
       if (currentAppVersion !== latestAppVersion) {

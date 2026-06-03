@@ -18,8 +18,8 @@ import { convex } from "./authStore";
 
 interface MessageState {
   isLoading: boolean;
-  selectedUser: { _id: Id<"users">; name: string } | null;
-  setSelectedUser: (user: { _id: Id<"users">; name: string } | null) => void;
+  selectedUser: { _id: Id<"users">; name: string; role?: "client" | "landLord" | "admin" } | null;
+  setSelectedUser: (user: { _id: Id<"users">; name: string; role?: "client" | "landLord" | "admin" } | null) => void;
 
   sendMessage: (
     senderId: Id<"users">,

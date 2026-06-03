@@ -2,7 +2,7 @@ import { Entypo } from '@expo/vector-icons'
 import { Slider } from '@miblanchard/react-native-slider'
 import * as Haptics from 'expo-haptics'
 import { router } from 'expo-router'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ActivityIndicator, FlatList, Image, Text, TextInput, TouchableOpacity, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
@@ -11,14 +11,6 @@ import icon from '../constant/icons'
 import { api } from "../convex/_generated/api"
 import { useCachedQuery } from '../hooks/useCachedQuery'
 import { useStore } from '../Stores/authStore'
-
-// FIX: exhaustive list of regions accepted by the Convex filterHomes validator.
-// Any free-text input that does not match one of these (case-insensitive) is
-// sent as undefined so Convex never receives an invalid literal value.
-const ALLOWED_REGIONS = [
-  "Bafoussam", "Douala", "Yaounde", "Buea", "Bamenda",
-  "Garoua", "Maroua", "Ngaoundere", "Adamawa", "Bertoua"
-]
 
 const Categories = [
   { label: 'House', value: 'House' },
@@ -37,55 +29,49 @@ const Categories = [
 
 function formatNumber(number) {
   const numStr = Number(number).toString()
-  return numStr
-    .split('').reverse().join('')
-    .match(/.{1,3}/g)
-    .join('.')
-    .split('').reverse().join('')
+  return numStr.split('').reverse().join('').match(/.{1,3}/g).join('.').split('').reverse().join('')
 }
 
 const FILTER_TABS = ["All", "Location", "Price"]
-
-const EMPTY_FILTERS = { minPrice: 5000, maxPrice: "", category: "", region: "" }
+const EMPTY_FILTERS = { minPrice: 5000, maxPrice: "", category: "", searchQuery: "" }
+const DEBOUNCE_MS = 400
 
 const Search = () => {
   const [activeTab, setActiveTab] = useState("All")
   const [filters, setFilters] = useState(EMPTY_FILTERS)
-  const [appliedFilters, setAppliedFilters] = useState(EMPTY_FILTERS)
-  const [mounted, setMounted] = useState(false)
+  // debouncedFilters is what actually gets sent to Convex
+  const [debouncedFilters, setDebouncedFilters] = useState(EMPTY_FILTERS)
+  const debounceRef = useRef(null)
   const { t } = useTranslation()
   const { user } = useStore()
 
-  // FIX: resolve the raw region text to a valid literal before querying.
-  // If the user typed something that does not match, pass undefined so Convex
-  // does not receive an invalid value and throw ArgumentValidationError.
-  const resolveRegion = (raw) => {
-    if (!raw?.trim()) return undefined
-    return ALLOWED_REGIONS.find(
-      r => r.toLowerCase() === raw.trim().toLowerCase()
-    ) ?? undefined
+  // Debounce: whenever filters change, wait DEBOUNCE_MS then push to debouncedFilters
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    debounceRef.current = setTimeout(() => {
+      setDebouncedFilters({ ...filters })
+    }, DEBOUNCE_MS)
+    return () => clearTimeout(debounceRef.current)
+  }, [filters])
+
+  // When tab changes, reset everything immediately (no debounce needed)
+  const handleTabChange = (tab) => {
+    setActiveTab(tab)
+    setFilters(EMPTY_FILTERS)
+    setDebouncedFilters(EMPTY_FILTERS)
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Soft)
   }
-
-  const regionHint = filters.region.length > 1
-    ? ALLOWED_REGIONS.filter(r =>
-      r.toLowerCase().startsWith(filters.region.toLowerCase().slice(0, 3))
-    ).slice(0, 4)
-    : []
-
-  const regionIsInvalid =
-    filters.region.trim().length > 0 && !resolveRegion(filters.region)
 
   const searchResult = useCachedQuery(
     api.homes.filterHomes,
     {
-      minPrice: Number(appliedFilters.minPrice),
-      maxPrice: Number(appliedFilters.maxPrice) || undefined,
-      category: appliedFilters.category || undefined,
-      region: resolveRegion(appliedFilters.region),
+      minPrice: Number(debouncedFilters.minPrice) || 5000,
+      maxPrice: Number(debouncedFilters.maxPrice) || undefined,
+      category: debouncedFilters.category || undefined,
+      searchQuery: debouncedFilters.searchQuery.trim() || undefined,
     },
-    `cache_search_${appliedFilters.minPrice}_${appliedFilters.maxPrice}_${appliedFilters.category}_${appliedFilters.region}`
+    `cache_search_${debouncedFilters.minPrice}_${debouncedFilters.maxPrice}_${debouncedFilters.category}_${debouncedFilters.searchQuery}`
   )
-
   const filteredHomes = searchResult?.homes ?? []
   const loading = searchResult === undefined
 
@@ -94,21 +80,6 @@ const Search = () => {
     user?._id ? { userId: user._id } : "skip",
     `cache_unread_count_${user?._id}`
   ) ?? 0
-
-  useEffect(() => {
-    if (!mounted) { setMounted(true); return }
-    applyFilter()
-  }, [activeTab])
-
-  const applyFilter = () => {
-    setAppliedFilters({
-      minPrice: filters.minPrice,
-      maxPrice: filters.maxPrice,
-      category: filters.category,
-      region: filters.region,
-    })
-    setFilters(EMPTY_FILTERS)
-  }
 
   return (
     <SafeAreaView className="flex-1 bg-white">
@@ -131,49 +102,22 @@ const Search = () => {
         {(activeTab === "All" || activeTab === "Location") && (
           <View className="flex-1 mx-3">
             <TextInput
-              placeholder="Search for a location..."
+              placeholder="Search by location, address..."
               returnKeyType="search"
               placeholderTextColor="gray"
-              value={filters.region}
-              onChangeText={(text) => setFilters({ ...filters, region: text })}
-              onSubmitEditing={applyFilter}
-              className={`border ${regionIsInvalid ? "border-blue-300" : "border-gray-200"} rounded-full p-2`}
+              value={filters.searchQuery}
+              onChangeText={(text) => setFilters({ ...filters, searchQuery: text })}
+              // No onSubmitEditing needed — debounce handles it automatically
+              className="border border-gray-200 rounded-full p-2"
             />
-            {/* Inline suggestion hints */}
-            {regionHint.length > 0 && regionIsInvalid && (
-              <View className="flex-row flex-wrap mt-1 ml-2 gap-1">
-                {regionHint.map(r => (
-                  <TouchableOpacity
-                    key={r}
-                    activeOpacity={0.7}
-                    onPress={() => {
-                      setFilters({ ...filters, region: r })
-                    }}
-                    className="bg-blue-50 px-2 py-0.5 rounded-full"
-                  >
-                    <Text className="text-xs text-[#124BCC] font-semibold">{r}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            )}
-            {regionIsInvalid && regionHint.length === 0 && (
-              <Text className="text-xs text-blue-400 ml-3 mt-1">
-                {t("validRegions")}: {ALLOWED_REGIONS.join(', ')}
-              </Text>
-            )}
           </View>
         )}
 
         <View className="flex relative">
-          {/* FIX: single TouchableOpacity wrapping both icon and badge.
-              Previously two sibling TouchableOpacity elements could both fire
-              when the badge overlapped the icon, causing double navigation. */}
           <TouchableOpacity activeOpacity={0.7} onPress={() => router.push("/Message")}>
             <Entypo name="message" size={28} color="gray" />
             {count > 0 && (
-              <View
-                className="absolute -top-1 right-0 bg-red-500 rounded-full py-1 px-[5px] max-w-9 flex flex-row items-center justify-center"
-              >
+              <View className="absolute -top-1 right-0 bg-red-500 rounded-full py-1 px-[5px] max-w-9 flex flex-row items-center justify-center">
                 <Text className="text-white text-center text-xs">{count > 10 ? "9+" : count}</Text>
               </View>
             )}
@@ -186,7 +130,7 @@ const Search = () => {
         <View className="px-6">
           <Slider
             value={filters.minPrice}
-            onValueChange={value => setFilters({ ...filters, minPrice: value })}
+            onValueChange={value => setFilters({ ...filters, minPrice: Array.isArray(value) ? value[0] : value })}
             minimumValue={5000}
             maximumValue={1000000}
             minimumTrackTintColor="#124BCC"
@@ -197,16 +141,16 @@ const Search = () => {
           <Text className="font-bold text-gray-500">{t("minimumPrice")} {formatNumber(filters.minPrice)}</Text>
 
           <Slider
-            value={filters.maxPrice}
-            onValueChange={value => setFilters({ ...filters, maxPrice: value })}
+            value={filters.maxPrice || 5000}
+            onValueChange={value => setFilters({ ...filters, maxPrice: Array.isArray(value) ? value[0] : value })}
             minimumValue={5000}
-            maximumValue={10000000}
+            maximumValue={1000000}
             minimumTrackTintColor="#124BCC"
             maximumTrackTintColor="gray"
             thumbTintColor="#124BCC"
             step={500}
           />
-          <Text className="font-bold text-gray-500">{t("maximumPrice")}: {formatNumber(filters.maxPrice)}</Text>
+          <Text className="font-bold text-gray-500">{t("maximumPrice")} {formatNumber(filters.maxPrice)}</Text>
 
           {activeTab === "All" && (
             <View className="w-full flex flex-row items-center justify-between">
@@ -220,13 +164,6 @@ const Search = () => {
                 />
                 <Text className="font-bold text-gray-500">{t("Category")} {filters.category}</Text>
               </View>
-              <TouchableOpacity
-                activeOpacity={0.7}
-                onPress={applyFilter}
-                className="bg-[#124BCC] items-center justify-center py-4 px-4 mx-3 rounded-md mb-4"
-              >
-                <Image source={icon.setting} className="size-6" tintColor="#ffffff" />
-              </TouchableOpacity>
             </View>
           )}
         </View>
@@ -239,10 +176,7 @@ const Search = () => {
           data={FILTER_TABS}
           renderItem={({ item }) => (
             <TouchableOpacity
-              onPress={() => {
-                setActiveTab(item)
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Soft)
-              }}
+              onPress={() => handleTabChange(item)}
               activeOpacity={0.7}
               className={`${activeTab === item ? "bg-[#124BCC]" : "bg-gray-200"} h-10 items-center justify-center px-4 mx-3 rounded-full`}
             >
@@ -253,17 +187,6 @@ const Search = () => {
           showsHorizontalScrollIndicator={false}
           keyExtractor={(item) => item}
         />
-
-        {activeTab !== "All" && (
-          <TouchableOpacity
-            activeOpacity={0.7}
-            onPress={applyFilter}
-            className="bg-[#124BCC] flex flex-row items-center justify-center py-4 mx-8 rounded-md mb-4"
-          >
-            <Image source={icon.filter} className="size-6 mr-2" tintColor="#ffffff" />
-            <Text className="text-white font-bold">{t("Filter")} {activeTab}</Text>
-          </TouchableOpacity>
-        )}
       </View>
 
       {/* ── Results list ── */}
@@ -284,55 +207,35 @@ const Search = () => {
                 activeOpacity={0.85}
                 className="bg-white rounded-2xl overflow-hidden shadow-sm shadow-gray-300"
               >
-                {/* Cover Image */}
                 <View className="relative">
                   <Image
                     source={{ uri: item.home_cover }}
                     className="w-full h-48"
                     resizeMode="cover"
                   />
-                  {/* Category Badge */}
                   <View className="absolute top-3 left-3 bg-white/90 px-3 py-1 rounded-full">
-                    <Text className="text-xs font-semibold text-[#124BCC]">
-                      {item.category}
-                    </Text>
+                    <Text className="text-xs font-semibold text-[#124BCC]">{item.category}</Text>
                   </View>
                 </View>
 
-                {/* Info */}
                 <View className="p-4 flex-row items-center justify-between">
                   <View className="flex-1 mr-3">
-                    <Text
-                      className="text-base font-bold text-gray-900"
-                      numberOfLines={1}
-                    >
+                    <Text className="text-base font-bold text-gray-900" numberOfLines={1}>
                       {item.address}
                     </Text>
-                    <Text className="text-xs text-gray-400 mt-0.5">
-                      {t("ListedProperty")}
-                    </Text>
+                    <Text className="text-xs text-gray-400 mt-0.5">{t("ListedProperty")}</Text>
                   </View>
                   <View className="bg-[#124BCC] px-3 py-2 rounded-xl">
-                    <Text className="text-white text-sm font-bold">
-                      {formatNumber(item.price)} XAF
-                    </Text>
+                    <Text className="text-white text-sm font-bold">{formatNumber(item.price)} XAF</Text>
                   </View>
                 </View>
               </TouchableOpacity>
             )}
             ListEmptyComponent={() => (
               <View className="flex-1 items-center justify-center mt-24 px-8">
-                <Image
-                  source={icon.result}
-                  className="w-36 h-36"
-                  tintColor="#e5e7eb"
-                />
-                <Text className="text-2xl font-bold text-gray-200 text-center mt-6">
-                  {t("NoResult")}
-                </Text>
-                <Text className="text-sm text-gray-300 text-center mt-2">
-                  {t("TryAdjustingSearch")}
-                </Text>
+                <Image source={icon.result} className="w-36 h-36" tintColor="#e5e7eb" />
+                <Text className="text-2xl font-bold text-gray-200 text-center mt-6">{t("NoResult")}</Text>
+                <Text className="text-sm text-gray-300 text-center mt-2">{t("TryAdjustingSearch")}</Text>
               </View>
             )}
             keyExtractor={(item) => item._id}

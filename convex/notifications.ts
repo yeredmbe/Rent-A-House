@@ -20,7 +20,7 @@ export const getNotifications = query({
                     ...n,
                     // FIX: replace raw senderId with populated object
                     senderId: sender
-                        ? { _id: sender._id, name: sender.name, email: sender.email, image_url: sender.image_url }
+                        ? { _id: sender._id, name: sender.name, email: sender.email, image_url: sender.image_url, role: sender.role }
                         : null,
                     // FIX: replace raw homeId with populated object
                     homeId: home
