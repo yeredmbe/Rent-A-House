@@ -9,6 +9,7 @@ import {
   Image,
   KeyboardAvoidingView,
   Modal,
+  Platform,
   RefreshControl,
   ScrollView,
   Share,
@@ -272,7 +273,7 @@ const Profile = () => {
             nestedScrollEnabled={true}
           >
             {/* Modal Header */}
-            <View className="flex-row items-center justify-between px-5 py-4 border-b border-gray-100">
+            <View className={`flex-row ${Platform.OS === 'android' ? 'mt-5' : ''} items-center justify-between px-5 py-4 border-b border-gray-100`}>
               <Text className="text-lg font-bold text-[#124BCC]">{t('updateProfile')}</Text>
               <TouchableOpacity activeOpacity={0.6} onPress={() => setISOpen(false)}>
                 <Image source={icons.cancel} tintColor="#123BCC" className="size-6" />

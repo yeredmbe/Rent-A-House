@@ -68,6 +68,7 @@ export const createHome = mutation({
     const whatsappRegex = /^(https?:\/\/)?(wa\.me|api\.whatsapp\.com|chat\.whatsapp\.com)\/.+/i;
     if (!whatsappRegex.test(args.whatsapp_url.trim()))
       throw new ConvexError("INVALID_WHATSAPP_LINK");
+
     const homeId = await ctx.db.insert("homes", {
       userId: args.userId,
       address: args.address,
@@ -102,46 +103,36 @@ export const createHome = mutation({
         isRead: false,
       });
 
-      // Send push notification to admin
-      try {
-        await ctx.runMutation(api.notifications.sendPushNotification, {
-          userId: admin._id,
-          title: "New House Pending Approval 🏠",
-          body: `${user.name} submitted a new house in ${args.region}.`,
-          data: { homeId: homeId.toString() },
-        });
-      } catch (err) {
-        console.warn(`[homes] Failed to send push to admin ${admin._id}:`, err);
-      }
+      // ✅ scheduler.runAfter — works inside mutations, fires action in background
+      await ctx.scheduler.runAfter(0, api.notifications.sendPushNotification, {
+        userId: admin._id,
+        title: "New House Pending Approval 🏠",
+        body: `${user.name} submitted a new house in ${args.region}.`,
+        data: { homeId: homeId.toString() },
+      });
     }
 
     // Notify the landlord that the house is pending review
     await ctx.db.insert("notifications", {
-      senderId: args.userId, // System message
+      senderId: args.userId,
       receiverId: args.userId,
       notification_type: "house_pending",
       homeId,
       isRead: false,
     });
 
-    try {
-      await ctx.runMutation(api.notifications.sendPushNotification, {
-        userId: args.userId,
-        title: "House Pending Review ⏳",
-        body: `Your property in ${args.region} has been submitted and is currently under review.`,
-        data: { homeId: homeId.toString() },
-      });
-    } catch (err) {
-      console.warn(`[homes] Failed to send pending push to landlord:`, err);
-    }
+    await ctx.scheduler.runAfter(0, api.notifications.sendPushNotification, {
+      userId: args.userId,
+      title: "House Pending Review ⏳",
+      body: `Your property in ${args.region} has been submitted and is currently under review.`,
+      data: { homeId: homeId.toString() },
+    });
 
     return homeId;
   },
 });
 
 // ─── GET ALL AVAILABLE HOMES ─────────────────────────────────────────────────
-// Real-time: any subscriber will receive updates automatically via Convex's
-// reactive query system — no extra setup needed on the client.
 export const getAvailableHomes = query({
   args: {},
   handler: async (ctx) => {
@@ -169,7 +160,11 @@ export const getAvailableHomes = query({
 export const recentlyPosted = query({
   args: {},
   handler: async (ctx) => {
-    return await ctx.db.query("homes").withIndex("by_isApproved", (q) => q.eq("isApproved", true)).order("desc").take(15);
+    return await ctx.db
+      .query("homes")
+      .withIndex("by_isApproved", (q) => q.eq("isApproved", true))
+      .order("desc")
+      .take(15);
   },
 });
 
@@ -234,8 +229,6 @@ export const getByRegion = query({
 });
 
 // ─── FILTER HOMES ────────────────────────────────────────────────────────────
-// Convex doesn't support complex range + equality in one index query,
-// so we fetch by available, then filter in JS (still fast for typical dataset sizes).
 export const filterHomes = query({
   args: {
     minPrice: v.optional(v.number()),
@@ -244,7 +237,7 @@ export const filterHomes = query({
     region: v.optional(regionValidator),
     address: v.optional(v.string()),
     description: v.optional(v.string()),
-    searchQuery: v.optional(v.string()), // ← add a general search term
+    searchQuery: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     let homes = await ctx.db
@@ -253,34 +246,26 @@ export const filterHomes = query({
       .order("desc")
       .collect();
 
-    // Structured filters (exact match is fine here)
-    if (args.category) {
-      homes = homes.filter((h) => h.category === args.category);
-    }
-    if (args.region) {
-      homes = homes.filter((h) => h.region === args.region);
-    }
-    if (args.minPrice !== undefined) {
-      homes = homes.filter((h) => h.price >= args.minPrice!);
-    }
-    if (args.maxPrice !== undefined) {
-      homes = homes.filter((h) => h.price <= args.maxPrice!);
-    }
+    if (args.category) homes = homes.filter((h) => h.category === args.category);
+    if (args.region) homes = homes.filter((h) => h.region === args.region);
+    if (args.minPrice !== undefined) homes = homes.filter((h) => h.price >= args.minPrice!);
+    if (args.maxPrice !== undefined) homes = homes.filter((h) => h.price <= args.maxPrice!);
 
-    // Free-text search: match any character in address, region, or description
-    if (args.searchQuery && args.searchQuery.trim() !== '') {
+    if (args.searchQuery && args.searchQuery.trim() !== "") {
       const q = args.searchQuery.toLowerCase().trim();
       homes = homes.filter((h) => {
-        const inAddress     = h.address?.toLowerCase().includes(q);
-        const inDescription = h.description?.toLowerCase().includes(q);
-        const inRegion      = h.region?.toLowerCase().includes(q);
-        return inAddress || inDescription || inRegion;
+        return (
+          h.address?.toLowerCase().includes(q) ||
+          h.description?.toLowerCase().includes(q) ||
+          h.region?.toLowerCase().includes(q)
+        );
       });
     }
 
     return { homes, count: homes.length };
   },
 });
+
 // ─── GET ALL HOMES FOR A USER ─────────────────────────────────────────────────
 export const getUserHomes = query({
   args: { userId: v.id("users") },
@@ -297,7 +282,7 @@ export const getUserHomes = query({
 export const updateHome = mutation({
   args: {
     homeId: v.id("homes"),
-    userId: v.id("users"), // for ownership check
+    userId: v.id("users"),
     address: v.string(),
     description: v.string(),
     city: v.string(),
@@ -342,7 +327,6 @@ export const deleteHome = mutation({
     if (!home) throw new ConvexError("HOME_NOT_FOUND");
     if (home.userId !== args.userId) throw new ConvexError("UNAUTHORIZED");
 
-    // Clean up related reviews
     const reviews = await ctx.db
       .query("reviews")
       .withIndex("by_homeId", (q) => q.eq("homeId", args.homeId))
@@ -391,7 +375,6 @@ export const toggleFavorite = mutation({
         favorites: [...user.favorites, args.homeId],
       });
 
-      // Create notification for home owner
       await ctx.db.insert("notifications", {
         senderId: args.userId,
         receiverId: home.userId,
@@ -400,18 +383,13 @@ export const toggleFavorite = mutation({
         isRead: false,
       });
 
-      // Send push notification to home owner
-      try {
-        const favoriter = await ctx.db.get(args.userId);
-        await ctx.runMutation(api.notifications.sendPushNotification, {
-          userId: home.userId,
-          title: "❤️ Someone Favorited Your Home",
-          body: `${favoriter?.name || "A user"} liked your property`,
-          data: { homeId: args.homeId.toString() },
-        });
-      } catch (err) {
-        console.warn(`[homes] Failed to send favorite notification:`, err);
-      }
+      // ✅ scheduler.runAfter instead of runMutation
+      await ctx.scheduler.runAfter(0, api.notifications.sendPushNotification, {
+        userId: home.userId,
+        title: "❤️ Someone Favorited Your Home",
+        body: `${user?.name || "A user"} liked your property`,
+        data: { homeId: args.homeId.toString() },
+      });
 
       return { action: "added" };
     }
@@ -419,15 +397,14 @@ export const toggleFavorite = mutation({
 });
 
 // ─── GET FAVORITE HOMES ───────────────────────────────────────────────────────
-// Real-time: reacts to user.favorites changes automatically
 export const getFavoriteHomes = query({
   args: { userId: v.id("users") },
   handler: async (ctx, args) => {
     const user = await ctx.db.get(args.userId);
     if (!user) return [];
-    return Promise.all(
-      user.favorites.map((id) => ctx.db.get(id))
-    ).then((homes) => homes.filter(Boolean));
+    return Promise.all(user.favorites.map((id) => ctx.db.get(id))).then((homes) =>
+      homes.filter(Boolean)
+    );
   },
 });
 
@@ -440,8 +417,7 @@ export const addReview = mutation({
   },
   handler: async (ctx, args) => {
     const home = await ctx.db.get(args.homeId);
-    if (!home) return
-    // throw new ConvexError("HOME_NOT_FOUND");
+    if (!home) return;
 
     const reviewId = await ctx.db.insert("reviews", {
       homeId: args.homeId,
@@ -449,7 +425,6 @@ export const addReview = mutation({
       text: args.text,
     });
 
-    // Notify home owner (skip if reviewing own home)
     if (home.userId !== args.userId) {
       await ctx.db.insert("notifications", {
         senderId: args.userId,
@@ -492,289 +467,124 @@ export const getReviews = query({
 // ─── DASHBOARD-ONLY FUNCTIONS ─────────────────────────────────────────────────
 // ═══════════════════════════════════════════════════════════════════════════════
 
-// ─────────────────────────────────────────────────────────────
-// LIST ALL HOMES (admin dashboard)
-// ─────────────────────────────────────────────────────────────
-
 export const listAllHomes = query({
   args: {},
-
   handler: async (ctx) => {
-    const homes = await ctx.db
-      .query("homes")
-      .order("desc")
-      .collect();
-
+    const homes = await ctx.db.query("homes").order("desc").collect();
     return await Promise.all(
       homes.map(async (home) => {
         let landlord = null;
-
         try {
-          if (home.userId) {
-            landlord = await ctx.db.get(home.userId);
-          }
+          if (home.userId) landlord = await ctx.db.get(home.userId);
         } catch (error) {
-          console.error(
-            "Invalid home owner:",
-            home._id
-          );
+          console.error("Invalid home owner:", home._id);
         }
-
-        return {
-          ...home,
-          landlord,
-        };
+        return { ...home, landlord };
       })
     );
   },
 });
 
-// ─────────────────────────────────────────────────────────────
-// AVAILABLE HOMES (dashboard variant)
-// ─────────────────────────────────────────────────────────────
-
 export const listAvailableHomes = query({
   args: {},
-
   handler: async (ctx) => {
     return await ctx.db
       .query("homes")
-      .withIndex("by_available", (q) =>
-        q.eq("isAvailable", true)
-      )
+      .withIndex("by_available", (q) => q.eq("isAvailable", true))
       .collect();
   },
 });
-
-// ─────────────────────────────────────────────────────────────
-// COUNT HOMES
-// ─────────────────────────────────────────────────────────────
 
 export const countHomes = query({
   args: {},
-
   handler: async (ctx) => {
-    const homes = await ctx.db
-      .query("homes")
-      .collect();
-
+    const homes = await ctx.db.query("homes").collect();
     return {
       total: homes.length,
-
-      available: homes.filter(
-        (h) => h.isAvailable
-      ).length,
-
-      unavailable: homes.filter(
-        (h) => !h.isAvailable
-      ).length,
-
-      approved: homes.filter(
-        (h) => h.isApproved
-      ).length,
-
-      pending: homes.filter(
-        (h) => !h.isApproved
-      ).length,
+      available: homes.filter((h) => h.isAvailable).length,
+      unavailable: homes.filter((h) => !h.isAvailable).length,
+      approved: homes.filter((h) => h.isApproved).length,
+      pending: homes.filter((h) => !h.isApproved).length,
     };
   },
 });
 
-// ─────────────────────────────────────────────────────────────
-// HOMES BY USER (dashboard variant)
-// ─────────────────────────────────────────────────────────────
-
 export const listHomesByUser = query({
-  args: {
-    userId: v.id("users"),
-  },
-
+  args: { userId: v.id("users") },
   handler: async (ctx, { userId }) => {
     return await ctx.db
       .query("homes")
-      .withIndex("by_userId", (q) =>
-        q.eq("userId", userId)
-      )
+      .withIndex("by_userId", (q) => q.eq("userId", userId))
       .collect();
   },
 });
 
-// ─────────────────────────────────────────────────────────────
-// GET SINGLE HOME (dashboard variant)
-// ─────────────────────────────────────────────────────────────
-
 export const getHomeById = query({
-  args: {
-    homeId: v.id("homes"),
-  },
-
+  args: { homeId: v.id("homes") },
   handler: async (ctx, { homeId }) => {
     const home = await ctx.db.get(homeId);
-
     if (!home) return null;
-
     let landlord = null;
-
     try {
       landlord = await ctx.db.get(home.userId);
-    } catch (error) {
+    } catch {
       console.error("Failed to fetch landlord");
     }
-
-    return {
-      ...home,
-      landlord,
-    };
+    return { ...home, landlord };
   },
 });
-
-// ─────────────────────────────────────────────────────────────
-// CREATE HOME (dashboard variant — no validation, admin use)
-// ─────────────────────────────────────────────────────────────
 
 export const adminCreateHome = mutation({
   args: {
     userId: v.id("users"),
-
     city: v.string(),
-
     address: v.optional(v.string()),
-
     price: v.number(),
-
-    category: v.union(
-      v.literal("House"),
-      v.literal("Apartment"),
-      v.literal("Villa"),
-      v.literal("Shop"),
-      v.literal("Office"),
-      v.literal("Studio"),
-      v.literal("Penthouse"),
-      v.literal("Townhouse"),
-      v.literal("Duplex"),
-      v.literal("Bungalow"),
-      v.literal("Cottage"),
-      v.literal("Mansion"),
-      v.literal("Room"),
-      v.literal("Store")
-    ),
-
+    category: categoryValidator,
     telephone: v.string(),
-
     home_cover: v.string(),
-
     description: v.string(),
-
-    region: v.union(
-      v.literal("Bafoussam"),
-      v.literal("Douala"),
-      v.literal("Yaounde"),
-      v.literal("Buea"),
-      v.literal("Bamenda"),
-      v.literal("Garoua"),
-      v.literal("Maroua"),
-      v.literal("Ngaoundere"),
-      v.literal("Adamawa"),
-      v.literal("Bertoua")
-    ),
-
+    region: regionValidator,
     whatsapp_url: v.string(),
-
     facebook_url: v.optional(v.string()),
-
     details: v.array(v.string()),
-
     isAvailable: v.boolean(),
-
     isApproved: v.boolean(),
-
     lat: v.optional(v.string()),
-
     long: v.optional(v.string()),
   },
-
   handler: async (ctx, args) => {
-    // Verify user exists
     const user = await ctx.db.get(args.userId);
-
-    if (!user) {
-      throw new Error("User not found");
-    }
-
-    return await ctx.db.insert("homes", {
-      ...args,
-    });
+    if (!user) throw new Error("User not found");
+    return await ctx.db.insert("homes", { ...args });
   },
 });
-
-// ─────────────────────────────────────────────────────────────
-// UPDATE HOME AVAILABILITY
-// ─────────────────────────────────────────────────────────────
 
 export const updateHomeAvailability = mutation({
-  args: {
-    homeId: v.id("homes"),
-
-    isAvailable: v.boolean(),
-  },
-
-  handler: async (
-    ctx,
-    { homeId, isAvailable }
-  ) => {
-    await ctx.db.patch(homeId, {
-      isAvailable,
-    });
-
-    return {
-      success: true,
-    };
+  args: { homeId: v.id("homes"), isAvailable: v.boolean() },
+  handler: async (ctx, { homeId, isAvailable }) => {
+    await ctx.db.patch(homeId, { isAvailable });
+    return { success: true };
   },
 });
-
-// ─────────────────────────────────────────────────────────────
-// UPDATE HOME APPROVAL
-// ─────────────────────────────────────────────────────────────
 
 export const updateHomeApproval = mutation({
-  args: {
-    homeId: v.id("homes"),
-
-    isApproved: v.boolean(),
-  },
-
-  handler: async (
-    ctx,
-    { homeId, isApproved }
-  ) => {
-    await ctx.db.patch(homeId, {
-      isApproved,
-    });
-
-    return {
-      success: true,
-    };
+  args: { homeId: v.id("homes"), isApproved: v.boolean() },
+  handler: async (ctx, { homeId, isApproved }) => {
+    await ctx.db.patch(homeId, { isApproved });
+    return { success: true };
   },
 });
 
-// ─────────────────────────────────────────────────────────────
-// DELETE HOME (dashboard variant — no ownership check, admin use)
-// ─────────────────────────────────────────────────────────────
-
 export const adminDeleteHome = mutation({
-  args: {
-    homeId: v.id("homes"),
-  },
-
+  args: { homeId: v.id("homes") },
   handler: async (ctx, { homeId }) => {
-    // Clean up related reviews
     const reviews = await ctx.db
       .query("reviews")
       .withIndex("by_homeId", (q) => q.eq("homeId", homeId))
       .collect();
     for (const r of reviews) await ctx.db.delete(r._id);
 
-    // Clean up related notifications
     const notifications = await ctx.db
       .query("notifications")
       .withIndex("by_homeId", (q) => q.eq("homeId", homeId))
@@ -782,10 +592,7 @@ export const adminDeleteHome = mutation({
     for (const n of notifications) await ctx.db.delete(n._id);
 
     await ctx.db.delete(homeId);
-
-    return {
-      success: true,
-    };
+    return { success: true };
   },
 });
 
@@ -798,35 +605,32 @@ export const verifyHome = mutation({
 
     await ctx.db.patch(homeId, { isApproved });
 
-    // Notify users in the same region if newly approved
     if (!home.isApproved && isApproved) {
-      // Notify the landlord that their house is approved
+      // Notify landlord of approval
       await ctx.db.insert("notifications", {
-        senderId: home.userId, // System message
+        senderId: home.userId,
         receiverId: home.userId,
         notification_type: "house_approved",
         homeId,
         isRead: false,
       });
 
-      try {
-        await ctx.runMutation(api.notifications.sendPushNotification, {
-          userId: home.userId,
-          title: "House Approved! 🎉",
-          body: `Great news! Your property in ${home.region} has been approved and is now live.`,
-          data: { homeId: homeId.toString() },
-        });
-      } catch (err) {
-        console.warn(`[homes] Failed to send approval push to landlord:`, err);
-      }
+      // ✅ scheduler.runAfter instead of runMutation
+      await ctx.scheduler.runAfter(0, api.notifications.sendPushNotification, {
+        userId: home.userId,
+        title: "House Approved! 🎉",
+        body: `Great news! Your property in ${home.region} has been approved and is now live.`,
+        data: { homeId: homeId.toString() },
+      });
 
+      // Notify users in the same region
       const usersInRegion = await ctx.db
         .query("users")
         .withIndex("by_location", (q) => q.eq("location", home.region))
         .collect();
 
       for (const user of usersInRegion) {
-        if (user._id === home.userId) continue; // skip the poster
+        if (user._id === home.userId) continue;
 
         await ctx.db.insert("notifications", {
           senderId: home.userId,
@@ -836,17 +640,13 @@ export const verifyHome = mutation({
           isRead: false,
         });
 
-        // Send push notification
-        try {
-          await ctx.runMutation(api.notifications.sendPushNotification, {
-            userId: user._id,
-            title: "🏠 New Listing Approved!",
-            body: `${home.address || "New property"} in ${home.region} is now available!`,
-            data: { homeId: homeId.toString() },
-          });
-        } catch (err) {
-          console.warn(`[homes] Failed to send push to user ${user._id}:`, err);
-        }
+        // ✅ scheduler.runAfter instead of runMutation
+        await ctx.scheduler.runAfter(0, api.notifications.sendPushNotification, {
+          userId: user._id,
+          title: "🏠 New Listing Approved!",
+          body: `${home.address || "New property"} in ${home.region} is now available!`,
+          data: { homeId: homeId.toString() },
+        });
       }
     }
   },

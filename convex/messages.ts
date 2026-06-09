@@ -3,6 +3,7 @@ import { api } from "./_generated/api";
 import { mutation, query } from "./_generated/server";
 
 // ─── SEND MESSAGE ─────────────────────────────────────────────────────────────
+// ─── SEND MESSAGE ─────────────────────────────────────────────────────────────
 export const sendMessage = mutation({
     args: {
         senderId: v.id("users"),
@@ -37,28 +38,21 @@ export const sendMessage = mutation({
             isRead: false,
         });
 
-        // Send push notification to receiver
-        try {
-            const sender = await ctx.db.get(args.senderId);
-            await ctx.runMutation(api.notifications.sendPushNotification, {
-                userId: args.receiverId,
-                title: `💬 Message from ${sender?.name || "Someone"}`,
-                body: args.text || "📷 Sent an image",
-                data: { messageId: messageId.toString() },
-            });
-        } catch (err) {
-            console.warn(`[messages] Failed to send push notification:`, err);
-        }
-
-        // Auto-add each other to chat_users (chat list) if not already there
+        // ✅ scheduler.runAfter instead of ctx.runMutation
         const sender = await ctx.db.get(args.senderId);
-        if (sender) {
-            const senderChats = sender.chat_users ?? [];
-            if (!senderChats.includes(args.receiverId)) {
-                await ctx.db.patch(args.senderId, {
-                    chat_users: [...senderChats, args.receiverId],
-                });
-            }
+        await ctx.scheduler.runAfter(0, api.notifications.sendPushNotification, {
+            userId: args.receiverId,
+            title: `💬 Message from ${sender?.name || "Someone"}`,
+            body: args.text || "📷 Sent an image",
+            data: { messageId: messageId.toString() },
+        });
+
+        // Auto-add each other to chat_users
+        const senderChats = sender?.chat_users ?? [];
+        if (!senderChats.includes(args.receiverId)) {
+            await ctx.db.patch(args.senderId, {
+                chat_users: [...senderChats, args.receiverId],
+            });
         }
 
         const receiverChats = receiver.chat_users ?? [];

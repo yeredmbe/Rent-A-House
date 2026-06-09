@@ -1,5 +1,6 @@
 import { ConvexError, v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { api } from "./_generated/api";
+import { action, mutation, query } from "./_generated/server";
 
 // ─── GET NOTIFICATIONS FOR A USER ────────────────────────────────────────────
 // Real-time: automatically pushes updates to subscribed clients.
@@ -93,50 +94,72 @@ export const deleteNotification = mutation({
  * Helper: Sends an actual push notification to a user's device
  * Called after creating a notification in the database
  */
-export const sendPushNotification = mutation({
-    args: {
-        userId: v.id("users"),
-        title: v.string(),
-        body: v.string(),
-        data: v.optional(v.any()), // homeId, messageId, etc.
-    },
-    handler: async (ctx, args) => {
-        try {
-            const user = await ctx.db.get(args.userId);
-            if (!user?.ExpoPushToken) {
-                // console.warn(`[push] User ${args.userId} has no token`);
-                return { success: false, reason: "NO_TOKEN" };
-            }
 
-            // Call the HTTP endpoint to send via Expo
-            const response = await fetch(
-                process.env.EXPO_PUBLIC_CONVEX_SITE_URL
-                    ? `${process.env.EXPO_PUBLIC_CONVEX_SITE_URL}/api/v1/notifications/send`
-                    : "http://localhost:3210/api/v1/notifications/send",
-                {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        userId: args.userId,
-                        title: args.title,
-                        body: args.body,
-                        data: args.data || {},
-                    }),
-                }
-            );
 
-            if (!response.ok) {
-                const error = await response.json();
-                // console.error(`[push] Failed to send to user ${args.userId}:`, error);
-                return { success: false, reason: "EXPO_ERROR", error };
-            }
+export const sendPushNotification = action({
+  args: {
+    userId: v.id("users"),
+    title: v.string(),
+    body: v.string(),
+    data: v.optional(v.any()),
+  },
+  handler: async (ctx, args) => {
+    // ✅ Actions can query the DB via ctx.runQuery
+    const user = await ctx.runQuery(api.users.getUserById, { userId: args.userId });
 
-            // console.log(`[push] ✅ Sent to user ${args.userId}`);
-            return { success: true };
-        } catch (error) {
-            const msg = error instanceof Error ? error.message : String(error);
-            // console.error(`[push] Error sending notification:`, msg);
-            return { success: false, reason: "ERROR", error: msg };
-        }
-    },
+    if (!user?.ExpoPushToken) {
+      console.warn(`[push] User ${args.userId} has no token`);
+      return { success: false, reason: "NO_TOKEN" };
+    }
+
+    const token = user.ExpoPushToken;
+
+    // ✅ Validate it's a real Expo push token
+    if (!token.startsWith("ExponentPushToken[") && !token.startsWith("ExpoPushToken[")) {
+      console.warn(`[push] Invalid token format: ${token}`);
+      return { success: false, reason: "INVALID_TOKEN" };
+    }
+
+    // ✅ Actions CAN make fetch calls — send directly to Expo
+    const response = await fetch("https://exp.host/--/api/v2/push/send", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+        "Accept-Encoding": "gzip, deflate",
+      },
+      body: JSON.stringify({
+        to: token,
+        title: args.title,
+        body: args.body,
+        data: args.data ?? {},
+        sound: "default",
+        badge: 1,
+        priority: "high",
+      }),
+    });
+
+    const result = await response.json();
+
+    // Expo returns { data: { status: "ok" } } on success
+    if (result?.data?.status === "ok") {
+      console.log(`[push] ✅ Sent to user ${args.userId}`);
+      return { success: true };
+    }
+
+    // Handle Expo-level errors
+    const expoError = result?.data;
+    console.error(`[push] ❌ Expo error for user ${args.userId}:`, expoError);
+
+    // If the token is invalid/expired, clean it from the DB
+    if (
+      expoError?.details?.error === "DeviceNotRegistered" ||
+      expoError?.details?.error === "InvalidCredentials"
+    ) {
+      await ctx.runMutation(api.users.clearPushToken, { userId: args.userId });
+      console.log(`[push] 🧹 Cleared stale token for user ${args.userId}`);
+    }
+
+    return { success: false, reason: expoError?.details?.error ?? "EXPO_ERROR", error: expoError };
+  },
 });

@@ -2,23 +2,7 @@ import { ConvexError, v } from "convex/values";
 import { api } from "./_generated/api";
 import { mutation, query } from "./_generated/server";
 
-// ─── HELPERS ────────────────────────────────────────────────────────────────
-// Convex runs in V8 isolates — use the Web Crypto API (available globally).
-// We store bcrypt hashes coming IN from the client (React Native calls bcryptjs
-// before hitting Convex), or we handle hashing here via a helper action.
-// For simplicity we keep password hashing in a Convex action (see auth.actions.ts).
-
 // ─── REGISTER ───────────────────────────────────────────────────────────────
-/**
- * Called AFTER the client has hashed the password (or call the action version).
- * Returns the new user's _id so the client can generate a JWT.
- *
- * FIX from original code:
- *  - Welcome notification was created with a wrong senderId reference.
- *    Now we look up the admin first and fail gracefully if none exists,
- *    creating the user anyway (non-admin users still get the welcome msg once
- *    an admin is seeded).
- */
 export const register = mutation({
   args: {
     name: v.string(),
@@ -29,19 +13,15 @@ export const register = mutation({
     ),
   },
   handler: async (ctx, args) => {
-    // 1. Check duplicate email
     const existing = await ctx.db
       .query("users")
       .withIndex("by_email", (q) => q.eq("email", args.email))
       .unique();
 
-    if (existing) {
-      throw new ConvexError("USER_EXISTS");
-    }
+    if (existing) throw new ConvexError("USER_EXISTS");
 
     const role = args.role ?? "client";
 
-    // 2. Create user
     const userId = await ctx.db.insert("users", {
       name: args.name,
       email: args.email,
@@ -57,29 +37,21 @@ export const register = mutation({
       location: "Yaounde",
     });
 
-    if (role === "admin") {
-      return { userId };
-    }
+    if (role === "admin") return { userId };
 
-    // 3. Find admin for welcome message
     const admin = await ctx.db
       .query("users")
       .withIndex("by_role", (q) => q.eq("role", "admin"))
       .first();
 
-    if (!admin) {
-      // No admin seeded yet — user is created, skip welcome message
-      return { userId };
-    }
+    if (!admin) return { userId };
 
-    // 4. Add admin to new user's chat_users so they appear in chat list
     await ctx.db.patch(userId, { chat_users: [admin._id] });
 
-    // 5. Welcome message
     const welcomeText =
       role === "client"
-        ? `You're In! Let's Get Your Profile Ready 🏠\n\nHello ${args.name},\n\nA massive welcome to Rent-A-House! ✨\n\nPlease take a moment to finish setting up your profile. By adding your location, you'll be the first to know when a perfect house pops up in your area! 🚀\n\nHappy house hunting!\nThe Rent-A-House Team\n\n\n\n\nVous êtes inscrit ! Préparons votre profil 🏠\n\nBonjour ${args.name},\n\nUn grand bienvenue sur Rent-A-House ! ✨\n\nVeuillez prendre un moment pour finaliser la configuration de votre profil. En ajoutant votre localisation, vous serez parmi les premiers informés lorsqu’une maison parfaite sera disponible dans votre région ! 🚀\n\nBonne recherche de maison !\nL’équipe Rent-A-House `
-        : `\n\n\nWelcome to Rent-A-House, dear Landlord! 🏠✨\n\nHello ${args.name},\n\nWelcome as a landlord on our platform. 🤝\n\nFinalize your profile to start publishing listings and reach potential tenants. 📍\n\nThe Rent-A-House Team\n\n\n\n\nBienvenue sur Rent-A-House, cher propriétaire ! 🏠✨\n\nBonjour ${args.name},\n\nBienvenue en tant que propriétaire sur notre plateforme. 🤝\n\nFinalisez votre profil pour commencer à publier des annonces et atteindre des locataires potentiels. 📍\n\nL’équipe Rent-A-House`;
+        ? `You're In! Let's Get Your Profile Ready 🏠\n\nHello ${args.name},\n\nA massive welcome to Rent-A-House! ✨\n\nPlease take a moment to finish setting up your profile. By adding your location, you'll be the first to know when a perfect house pops up in your area! 🚀\n\nHappy house hunting!\nThe Rent-A-House Team\n\n\n\n\nVous êtes inscrit ! Préparons votre profil 🏠\n\nBonjour ${args.name},\n\nUn grand bienvenue sur Rent-A-House ! ✨\n\nVeuillez prendre un moment pour finaliser la configuration de votre profil. En ajoutant votre localisation, vous serez parmi les premiers informés lorsqu'une maison parfaite sera disponible dans votre région ! 🚀\n\nBonne recherche de maison !\nL'équipe Rent-A-House `
+        : `\n\n\nWelcome to Rent-A-House, dear Landlord! 🏠✨\n\nHello ${args.name},\n\nWelcome as a landlord on our platform. 🤝\n\nFinalize your profile to start publishing listings and reach potential tenants. 📍\n\nThe Rent-A-House Team\n\n\n\n\nBienvenue sur Rent-A-House, cher propriétaire ! 🏠✨\n\nBonjour ${args.name},\n\nBienvenue en tant que propriétaire sur notre plateforme. 🤝\n\nFinalisez votre profil pour commencer à publier des annonces et atteindre des locataires potentiels. 📍\n\nL'équipe Rent-A-House`;
 
     const messageId = await ctx.db.insert("messages", {
       senderId: admin._id,
@@ -89,7 +61,6 @@ export const register = mutation({
       readBySender: true,
     });
 
-    // 6. Welcome notification — FIX: was previously missing the messageId link
     await ctx.db.insert("notifications", {
       senderId: admin._id,
       receiverId: userId,
@@ -98,20 +69,14 @@ export const register = mutation({
       isRead: false,
     });
 
-    // 7. Send push notification (if user has token)
-    try {
-      await ctx.runMutation(api.notifications.sendPushNotification, {
-        userId,
-        title: "🎉 Welcome to Rent-A-House!",
-        body: `Hi ${args.name}, check your messages to get started`,
-        data: { messageId: messageId.toString() },
-      });
-    } catch (err) {
-      console.warn(`[users] Failed to send welcome push notification:`, err);
-      // Don't throw — user still gets the in-app notification
-    }
+    // ✅ Fix 1: scheduler.runAfter instead of ctx.runMutation
+    await ctx.scheduler.runAfter(0, api.notifications.sendPushNotification, {
+      userId,
+      title: "🎉 Welcome to Rent-A-House!",
+      body: `Hi ${args.name}, check your messages to get started`,
+      data: { messageId: messageId.toString() },
+    });
 
-    // 8. Schedule follow-up message after 10 minutes
     await ctx.scheduler.runAfter(10 * 60 * 1000, api.users.sendFollowUpMessage, {
       userId,
       adminId: admin._id,
@@ -133,9 +98,10 @@ export const sendFollowUpMessage = mutation({
   handler: async (ctx, args) => {
     const { userId, adminId, name, role } = args;
 
-    const followUpText = role === "client"
-      ? `Still there, ${name}? Just a quick reminder to complete your profile! 🏡\n\nTo ensure a safe community, please verify your account by sending us your full name, an image of your ID card, and your location. Let us know if you need any help finding the perfect home.\n\n\nToujours là, ${name} ? Petit rappel pour compléter votre profil ! 🏡\n\nPour garantir une communauté sécurisée, veuillez vérifier votre compte en nous envoyant votre nom complet, une image de votre carte d'identité et votre localisation. Faites-nous savoir si vous avez besoin d'aide pour trouver la maison parfaite.`
-      : `\n\n\nHello again, ${name}! Don't forget to complete your landlord profile! 🤝\n\nTo start publishing listings and for the safety of our tenants, please verify your account by sending us your full name, an image of your ID card, your location, and a document proving you are the house owner. We're here to help!\n\n\nBonjour à nouveau, ${name} ! N'oubliez pas de compléter votre profil de propriétaire ! 🤝\n\nPour commencer à publier des annonces et pour la sécurité de nos locataires, veuillez vérifier votre compte en nous envoyant votre nom complet, une image de votre carte d'identité, votre localisation, ainsi qu'un document prouvant que vous êtes le propriétaire de la maison. Nous sommes là pour vous aider !`;
+    const followUpText =
+      role === "client"
+        ? `Still there, ${name}? Just a quick reminder to complete your profile! 🏡\n\nTo ensure a safe community, please verify your account by sending us your full name, an image of your ID card, and your location. Let us know if you need any help finding the perfect home.\n\n\nToujours là, ${name} ? Petit rappel pour compléter votre profil ! 🏡\n\nPour garantir une communauté sécurisée, veuillez vérifier votre compte en nous envoyant votre nom complet, une image de votre carte d'identité et votre localisation. Faites-nous savoir si vous avez besoin d'aide pour trouver la maison parfaite.`
+        : `\n\n\nHello again, ${name}! Don't forget to complete your landlord profile! 🤝\n\nTo start publishing listings and for the safety of our tenants, please verify your account by sending us your full name, an image of your ID card, your location, and a document proving you are the house owner. We're here to help!\n\n\nBonjour à nouveau, ${name} ! N'oubliez pas de compléter votre profil de propriétaire ! 🤝\n\nPour commencer à publier des annonces et pour la sécurité de nos locataires, veuillez vérifier votre compte en nous envoyant votre nom complet, une image de votre carte d'identité, votre localisation, ainsi qu'un document prouvant que vous êtes le propriétaire de la maison. Nous sommes là pour vous aider !`;
 
     const messageId = await ctx.db.insert("messages", {
       senderId: adminId,
@@ -153,25 +119,17 @@ export const sendFollowUpMessage = mutation({
       isRead: false,
     });
 
-    // Send push notification for follow-up
-    try {
-      await ctx.runMutation(api.notifications.sendPushNotification, {
-        userId,
-        title: "Rent-A-House Tip 💡",
-        body: `Hey ${name}, we have a quick tip for you!`,
-        data: { messageId: messageId.toString() },
-      });
-    } catch (e) {
-      console.warn("Failed to schedule push for follow up:", e);
-    }
-  }
+    // ✅ Fix 2: scheduler.runAfter instead of ctx.runMutation
+    await ctx.scheduler.runAfter(0, api.notifications.sendPushNotification, {
+      userId,
+      title: "Rent-A-House Tip 💡",
+      body: `Hey ${name}, we have a quick tip for you!`,
+      data: { messageId: messageId.toString() },
+    });
+  },
 });
 
 // ─── LOGIN ───────────────────────────────────────────────────────────────────
-/**
- * Returns the user document (including hashed password) so the caller
- * (a Convex HTTP action) can verify with bcrypt and issue a JWT.
- */
 export const getUserByEmail = query({
   args: { email: v.string() },
   handler: async (ctx, args) => {
@@ -188,7 +146,6 @@ export const getById = query({
   handler: async (ctx, args) => {
     const user = await ctx.db.get(args.userId);
     if (!user) return null;
-    // Strip password before returning
     const { password: _pw, ...safe } = user;
     return safe;
   },
@@ -221,7 +178,6 @@ export const editUser = mutation({
     const user = await ctx.db.get(userId);
     if (!user) throw new ConvexError("USER_NOT_FOUND");
 
-    // Validate age
     if (fields.age !== undefined && (fields.age <= 18 || fields.age > 80)) {
       throw new ConvexError("INVALID_AGE");
     }
@@ -280,6 +236,25 @@ export const updatePushToken = mutation({
   },
 });
 
+// ─── CLEAR PUSH TOKEN (called when token is stale/expired) ──────────────────
+export const clearPushToken = mutation({
+  args: { userId: v.id("users") },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.userId, { ExpoPushToken: "" });
+  },
+});
+
+// ─── GET USER BY ID (used by push notification action) ───────────────────────
+export const getUserById = query({
+  args: { userId: v.id("users") },
+  handler: async (ctx, { userId }) => {
+    const user = await ctx.db.get(userId);
+    if (!user) return null;
+    const { password: _pw, ...safe } = user;
+    return safe;
+  },
+});
+
 // ─── SUBSCRIPTION ────────────────────────────────────────────────────────────
 export const setSubscription = mutation({
   args: {
@@ -295,18 +270,10 @@ export const setSubscription = mutation({
     const now = Date.now();
     const expiry = new Date(now);
     switch (args.planType) {
-      case "1month":
-        expiry.setMonth(expiry.getMonth() + 1);
-        break;
-      case "3months":
-        expiry.setMonth(expiry.getMonth() + 3);
-        break;
-      case "6months":
-        expiry.setMonth(expiry.getMonth() + 6);
-        break;
-      case "1year":
-        expiry.setFullYear(expiry.getFullYear() + 1);
-        break;
+      case "1month": expiry.setMonth(expiry.getMonth() + 1); break;
+      case "3months": expiry.setMonth(expiry.getMonth() + 3); break;
+      case "6months": expiry.setMonth(expiry.getMonth() + 6); break;
+      case "1year": expiry.setFullYear(expiry.getFullYear() + 1); break;
     }
     await ctx.db.patch(args.userId, {
       subscriptionPlanType: args.planType,
@@ -324,23 +291,14 @@ export const checkSubscription = query({
     const user = await ctx.db.get(args.userId);
     if (!user) throw new ConvexError("USER_NOT_FOUND");
 
-    if (!user.isSubscribed) {
-      return { isSubscribed: false, planType: "free" };
-    }
+    if (!user.isSubscribed) return { isSubscribed: false, planType: "free" };
 
     const now = Date.now();
     const expiry = user.subscriptionExpiryDate ?? 0;
 
-    if (expiry <= now) {
-      // Expired — caller should call resetSubscription mutation
-      return { isSubscribed: false, planType: "free", expired: true };
-    }
+    if (expiry <= now) return { isSubscribed: false, planType: "free", expired: true };
 
-    return {
-      isSubscribed: true,
-      planType: user.subscriptionPlanType,
-      expiryDate: expiry,
-    };
+    return { isSubscribed: true, planType: user.subscriptionPlanType, expiryDate: expiry };
   },
 });
 
@@ -358,7 +316,6 @@ export const resetSubscription = mutation({
 // ─── DASHBOARD-ONLY FUNCTIONS ─────────────────────────────────────────────────
 // ═══════════════════════════════════════════════════════════════════════════════
 
-/** All non-admin users (for dashboard user table) */
 export const listNonAdminUsers = query({
   args: {},
   handler: async (ctx) => {
@@ -374,7 +331,6 @@ export const listNonAdminUsers = query({
   },
 });
 
-/** All landlords */
 export const listLandlords = query({
   args: {},
   handler: async (ctx) => {
@@ -385,7 +341,6 @@ export const listLandlords = query({
   },
 });
 
-/** All clients */
 export const listClients = query({
   args: {},
   handler: async (ctx) => {
@@ -396,7 +351,6 @@ export const listClients = query({
   },
 });
 
-/** Count users by role */
 export const countByRole = query({
   args: {},
   handler: async (ctx) => {
@@ -410,18 +364,6 @@ export const countByRole = query({
   },
 });
 
-/** Get single user by id (dashboard variant) */
-export const getUserById = query({
-  args: { userId: v.id("users") },
-  handler: async (ctx, { userId }) => {
-    const user = await ctx.db.get(userId);
-    if (!user) return null;
-    const { password: _pw, ...safe } = user;
-    return safe;
-  },
-});
-
-/** Create/upsert a user */
 export const upsertUser = mutation({
   args: {
     name: v.string(),
@@ -447,7 +389,6 @@ export const upsertUser = mutation({
   },
 });
 
-/** Toggle user active status */
 export const toggleUserActive = mutation({
   args: { userId: v.id("users"), isActive: v.boolean() },
   handler: async (ctx, { userId, isActive }) => {
@@ -455,7 +396,6 @@ export const toggleUserActive = mutation({
   },
 });
 
-/** Delete a user */
 export const deleteUser = mutation({
   args: { userId: v.id("users") },
   handler: async (ctx, { userId }) => {
@@ -463,14 +403,11 @@ export const deleteUser = mutation({
   },
 });
 
-// ─── UPDATE APP VERSION ──────────────────────────────────────────────────────
+// ─── APP VERSION ─────────────────────────────────────────────────────────────
 export const updateUserAppVersion = mutation({
-  args: {
-    appVersion: v.string(),
-  },
+  args: { appVersion: v.string() },
   handler: async (ctx, args) => {
     const latest = await ctx.db.query("latestAppVersion").first();
-
     if (latest) {
       await ctx.db.patch(latest._id, { version: args.appVersion });
     } else {
@@ -479,13 +416,8 @@ export const updateUserAppVersion = mutation({
   },
 });
 
-
-
 export const updateUserCurrentAppVersion = mutation({
-  args: {
-    userId: v.id("users"),
-    appVersion: v.string(),
-  },
+  args: { userId: v.id("users"), appVersion: v.string() },
   handler: async (ctx, args) => {
     await ctx.db.patch(args.userId, { appVersion: args.appVersion });
   },
@@ -495,20 +427,21 @@ export const getLatestAppVersion = query({
   args: {},
   handler: async (ctx) => {
     const latest = await ctx.db.query("latestAppVersion").first();
-
     return latest ? latest.version : "1.0.0";
   },
 });
 
 // ─── VERIFY USER ──────────────────────────────────────────────────────────────
 export const verifyUser = mutation({
-  args: { userId: v.id("users"), isVerified: v.boolean(), senderId: v.id("users") },
+  args: {
+    userId: v.id("users"),
+    isVerified: v.boolean(),
+    senderId: v.id("users"),
+  },
   handler: async (ctx, { userId, isVerified, senderId }) => {
     const user = await ctx.db.get(userId);
     if (!user) throw new ConvexError("USER_NOT_FOUND");
-    if (user.role === "admin") {
-      throw new ConvexError("ADMIN_CANNOT_BE_VERIFIED");
-    }
+    if (user.role === "admin") throw new ConvexError("ADMIN_CANNOT_BE_VERIFIED");
 
     await ctx.db.patch(userId, { isVerified });
 
@@ -533,16 +466,12 @@ export const verifyUser = mutation({
       isRead: false,
     });
 
-    try {
-      await ctx.runMutation(api.notifications.sendPushNotification, {
-        userId,
-        title: "Account Verified ✅",
-        body: `Hi ${user.name}, your Rent-A-House account has been verified successfully!`,
-        data: { messageId: messageId.toString() },
-      });
-    } catch (err) {
-      console.warn("[users] Failed to send verification push notification:", err);
-    }
+    // ✅ Fix 3: scheduler.runAfter instead of ctx.runMutation
+    await ctx.scheduler.runAfter(0, api.notifications.sendPushNotification, {
+      userId,
+      title: "Account Verified ✅",
+      body: `Hi ${user.name}, your Rent-A-House account has been verified successfully!`,
+      data: { messageId: messageId.toString() },
+    });
   },
 });
-

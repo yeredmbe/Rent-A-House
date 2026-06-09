@@ -2,7 +2,7 @@
   "expo": {
     "name": "RentAHouse",
     "slug": "Rent-A-House",
-    "version": "3.08",
+    "version": "3.09",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "rentahouse",
@@ -16,7 +16,10 @@
     },
 
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSUserNotificationUsageDescription": "We'll notify you when someone messages you or your listing is updated."
+      }
     },
 
     "android": {
@@ -24,7 +27,12 @@
         "backgroundColor": "#ffffff",
         "backgroundImage": "./assets/images/adaptive-icon.png"
       },
-
+      "googleServicesFile": "./google-services.json",
+      "permissions": [
+        "android.permission.POST_NOTIFICATIONS",
+        "android.permission.RECEIVE_BOOT_COMPLETED",
+        "android.permission.VIBRATE"
+      ],
       "edgeToEdgeEnabled": true,
       "softwareKeyboardLayoutMode": "pan",
       "predictiveBackGestureEnabled": false,
@@ -51,11 +59,16 @@
 
       "expo-web-browser",
       "expo-localization",
-     ["expo-notifications", {
-  "icon": "./assets/images/adaptive-icon.png",
-  "color": "#ffffff",
-  "iosDisplayInForeground": true
-}],
+
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/adaptive-icon.png",
+          "color": "#ffffff",
+          "iosDisplayInForeground": true
+        }
+      ],
+
       "expo-font",
 
       [

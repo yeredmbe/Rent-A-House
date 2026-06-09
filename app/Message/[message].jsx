@@ -191,7 +191,7 @@ const Message = () => {
             <KeyboardAvoidingView
                 behavior={Platform.OS === "ios" ? "padding" : "height"}
                 className="flex-1 bg-white"
-                keyboardVerticalOffset={Platform.OS === "ios" ? 95 : 0}
+                keyboardVerticalOffset={Platform.OS === "ios" ??  0}
             >
                 {/* Header */}
                 <View

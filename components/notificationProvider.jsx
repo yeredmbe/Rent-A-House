@@ -7,8 +7,6 @@ import { Platform } from "react-native";
 import { api } from "../convex/_generated/api";
 import { convex, useStore } from "../Stores/authStore";
 
-// ✅ CHANGED: replaced shouldShowBanner/shouldShowList with shouldShowAlert
-// shouldShowAlert is the field that actually triggers the iOS permission popup
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldShowAlert: true,
@@ -17,66 +15,59 @@ Notifications.setNotificationHandler({
   }),
 });
 
+// ✅ Fully outside the component — no stale closure risk in production builds
+async function registerForPushNotificationsAsync(): Promise<string | undefined> {
+  if (!Device.isDevice) {
+    console.warn("[push] Physical device required.");
+    return;
+  }
+
+  if (Platform.OS === "android") {
+    await Notifications.setNotificationChannelAsync("default", {
+      name: "default",
+      importance: Notifications.AndroidImportance.MAX,
+      vibrationPattern: [0, 250, 250, 250],
+      enableVibrate: true,
+      showBadge: true,
+    });
+  }
+
+  const { status: existingStatus } = await Notifications.getPermissionsAsync();
+  let finalStatus = existingStatus;
+
+  if (existingStatus !== "granted") {
+    const { status } = await Notifications.requestPermissionsAsync();
+    finalStatus = status;
+  }
+
+  if (finalStatus !== "granted") {
+    console.warn("🚫 Permission not granted.");
+    return;
+  }
+
+  // ✅ Pull projectId from the correct place for production builds
+  const projectId =
+    Constants.expoConfig?.extra?.eas?.projectId ??
+    Constants.easConfig?.projectId;
+
+  if (!projectId) {
+    console.warn("❌ No EAS projectId found. Check app.json extra.eas.projectId");
+    return;
+  }
+
+  try {
+    const { data: token } = await Notifications.getExpoPushTokenAsync({ projectId });
+    console.log("📲 Expo push token:", token);
+    return token;
+  } catch (error) {
+    console.warn("❌ Failed to get push token:", error);
+  }
+}
+
 const NotificationProvider = ({ children }) => {
   const user = useStore((state) => state.user);
   const userId = user?._id;
   const savedTokenRef = useRef(null);
-
-  // ✅ CHANGED: extracted registration logic outside the useEffect (like the working version)
-  // This ensures Android channel + permissions + token fetching all happen in one clean async flow
-  // before any listeners are attached, reducing race conditions
-  const registerForPushNotificationsAsync = async () => {
-    if (!Device.isDevice) {
-      console.warn("[push] Push notifications require a physical device.");
-      return;
-    }
-
-    if (Platform.OS === "android") {
-      await Notifications.setNotificationChannelAsync("default", {
-        name: "default",
-        importance: Notifications.AndroidImportance.MAX,
-        vibrationPattern: [0, 250, 250, 250],
-        enableVibrate: true,
-        showBadge: true,
-      });
-    }
-
-    const { status: existingStatus } = await Notifications.getPermissionsAsync();
-    let finalStatus = existingStatus;
-
-    if (existingStatus !== "granted") {
-      const { status } = await Notifications.requestPermissionsAsync();
-      finalStatus = status;
-    }
-
-    if (finalStatus !== "granted") {
-      console.warn("🚫 Notification permission was not granted.");
-      return;
-    }
-
-    try {
-      const projectId =
-        Constants.expoConfig?.extra?.eas?.projectId ??
-        Constants.easConfig?.projectId;
-
-      if (!projectId) {
-        console.warn("❌ EAS projectId not found in app configuration.");
-        return;
-      }
-
-      const tokenResponse = await Notifications.getExpoPushTokenAsync({ projectId });
-      const token = tokenResponse?.data;
-
-      if (!token) {
-        console.warn("❌ Failed to retrieve Expo push token.");
-        return;
-      }
-
-      return token;
-    } catch (error) {
-      console.warn("❌ Error getting push token:", error);
-    }
-  };
 
   useEffect(() => {
     if (!userId) return;
@@ -96,68 +87,50 @@ const NotificationProvider = ({ children }) => {
 
     const initializeNotifications = async () => {
       try {
-        // ✅ CHANGED: call the extracted function and receive the token back cleanly
         const token = await registerForPushNotificationsAsync();
 
         if (token) {
-          // Skip DB update if token unchanged
           if (savedTokenRef.current !== token && user?.ExpoPushToken !== token) {
             await convex.mutation(api.users.updatePushToken, { userId, token });
             savedTokenRef.current = token;
             console.log("✅ Push token saved:", token);
           } else {
-            console.log("✅ Push token unchanged, skipping update.");
+            console.log("✅ Token unchanged, skipping update.");
           }
         }
 
-        // Handle app opened from a killed state via notification tap
         const lastResponse = await Notifications.getLastNotificationResponseAsync();
         if (lastResponse) {
           const data = lastResponse.notification.request.content.data || {};
-          console.log("📲 App opened from notification:", data);
           handleNotificationNavigation(data);
         }
 
-        // Foreground notification listener
         notificationReceivedListener = Notifications.addNotificationReceivedListener(
           (notification) => {
-            try {
-              const data = notification?.request?.content?.data || {};
-              console.log("📩 Foreground notification:", data);
-            } catch (error) {
-              console.warn("⚠️ Foreground notification error:", error);
-            }
+            const data = notification?.request?.content?.data || {};
+            console.log("📩 Foreground notification:", data);
           }
         );
 
-        // Notification tap listener
         responseListener = Notifications.addNotificationResponseReceivedListener(
           (response) => {
-            try {
-              const data = response?.notification?.request?.content?.data || {};
-              console.log("🔔 Notification tapped:", data);
-              handleNotificationNavigation(data);
-            } catch (error) {
-              console.warn("⚠️ Notification tap error:", error);
-            }
+            const data = response?.notification?.request?.content?.data || {};
+            console.log("🔔 Notification tapped:", data);
+            handleNotificationNavigation(data);
           }
         );
 
-        console.log("✅ Notifications initialized successfully");
+        console.log("✅ Notifications initialized.");
       } catch (error) {
-        console.warn("❌ Notification initialization error:", error);
+        console.warn("❌ Initialization error:", error);
       }
     };
 
     initializeNotifications();
 
     return () => {
-      if (notificationReceivedListener) {
-        Notifications.removeNotificationSubscription(notificationReceivedListener);
-      }
-      if (responseListener) {
-        Notifications.removeNotificationSubscription(responseListener);
-      }
+      notificationReceivedListener?.remove?.();
+      responseListener?.remove?.();
     };
   }, [userId, user?.ExpoPushToken]);
 
