@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "207282088211",
+    "project_id": "rentahouse-bea4b",
+    "storage_bucket": "rentahouse-bea4b.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:207282088211:android:48a6beab5751f38a9792e6",
+        "android_client_info": {
+          "package_name": "com.anonymous.RentAHouse"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBCAYGF5JOuEJLrCmtQw27nPkb3iZHQBbc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

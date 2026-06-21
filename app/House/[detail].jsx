@@ -1,0 +1,397 @@
+import { Entypo } from '@expo/vector-icons';
+import { useMutation } from "convex/react";
+import * as Haptics from 'expo-haptics';
+import { router, useLocalSearchParams } from 'expo-router';
+import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { ActivityIndicator, Dimensions, FlatList, Image, ImageBackground, KeyboardAvoidingView, Linking, Modal, Platform, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { showToast } from 'rn-snappy-toast';
+import { AuthErrorModal } from '../../components/AuthErrorModal';
+import icons from '../../constant/icons';
+import image from '../../constant/image';
+import { api } from "../../convex/_generated/api";
+import { useCachedQuery } from '../../hooks/useCachedQuery';
+import { useStore } from '../../Stores/authStore';
+import { messageStore } from '../../Stores/messageStore';
+import { getAuthError } from '../lib/AuthErrors';
+
+function formatNumber(number) {
+  const numStr = Number(number).toString();
+  return numStr
+    .split('').reverse().join('')
+    .match(/.{1,3}/g).join('.')
+    .split('').reverse().join('');
+}
+
+function formatRelativeTime(dateString) {
+  if (!dateString) return '';
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffInSeconds = Math.floor((now - date) / 1000);
+  if (diffInSeconds < 60) return 'just now';
+  const diffInMinutes = Math.floor(diffInSeconds / 60);
+  if (diffInMinutes < 60) return `${diffInMinutes} min${diffInMinutes > 1 ? 's' : ''} ago`;
+  const diffInHours = Math.floor(diffInMinutes / 60);
+  if (diffInHours < 24) return `${diffInHours} hr${diffInHours > 1 ? 's' : ''} ago`;
+  const diffInDays = Math.floor(diffInHours / 24);
+  if (diffInDays < 7) return `${diffInDays} day${diffInDays > 1 ? 's' : ''} ago`;
+  const diffInWeeks = Math.floor(diffInDays / 7);
+  if (diffInWeeks < 4) return `${diffInWeeks}w`;
+  const diffInMonths = Math.floor(diffInDays / 30);
+  if (diffInMonths < 12) return `${diffInMonths}m`;
+  return `${Math.floor(diffInDays / 365)}y`;
+}
+
+const DetailPage = () => {
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [isLoaded, setIsLoading] = useState(false);
+  const { detail } = useLocalSearchParams();
+  const { user, updateFavorites } = useStore();
+  const { t } = useTranslation()
+
+  const Home = useCachedQuery(api.homes.getHome, detail ? { homeId: detail } : "skip", `cache_home_detail_${detail}`);
+  const isLoading = Home === undefined;
+  const addReviewMutation = useMutation(api.homes.addReview);
+  const toggleFavMutation = useMutation(api.homes.toggleFavorite);
+
+  const { setSelectedUser } = messageStore();
+  const [isOpen, setIsOpen] = useState(false);
+  const [text, setText] = useState("");
+  const [isClicked, setIsClicked] = useState(false);
+
+  const [modal, setModal] = useState({ visible: false, title: '', message: '' });
+
+  const showError = (code) => {
+    const { title, message } = getAuthError(code);
+    setModal({ visible: true, title, message });
+  };
+
+  const handleSendMessage = async () => {
+    if (!text.trim() || isClicked) return;
+    setIsClicked(true);
+    try {
+      await addReviewMutation({ homeId: Home?._id, userId: user?._id, text });
+      setText("");
+      setIsOpen(false);
+    } catch (err) {
+      showError(err?.data ?? err?.message ?? 'UNKNOWN');
+    } finally {
+      setIsClicked(false);
+    }
+  };
+
+  const checkUser = () => {
+    const ownerId = Home?.userId;
+    if (!ownerId) return;
+    if (user?._id === ownerId) return;
+    if (!user?.isVerified) {
+      showToast({
+        message: t("You need to verify your account to message"),
+        duration: 5000, type: 'warning', position: 'top', title: 'Warning',
+        animationType: 'slide', progressBar: true, richColors: true,
+      });
+      return;
+    }
+    setSelectedUser(Home?.owner ?? null);
+    router.push(`/Message/${ownerId}`);
+  };
+
+  const addToFavorite = async (id) => {
+    if (!id || !user?._id) return;
+    setIsLoading(true);
+    try {
+      const res = await toggleFavMutation({ homeId: id, userId: user._id });
+      updateFavorites(id);
+      showToast({
+        message: res?.action === "added" ? "Added to favorites" : "Removed from favorites",
+        duration: 5000, type: 'success', position: 'top', title: 'Success',
+        animationType: 'slide', progressBar: true, richColors: true,
+      });
+    } catch (err) {
+      showError(err?.data ?? err?.message ?? 'UNKNOWN');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <View className="flex-1 bg-white">
+      <AuthErrorModal
+        visible={modal.visible}
+        title={modal.title}
+        message={modal.message}
+        onClose={() => setModal((m) => ({ ...m, visible: false }))}
+      />
+      <View className="flex-1 relative">
+        <FlatList
+          data={Home?.details}
+          keyExtractor={(item, index) => index.toString()}
+          onScroll={(event) => {
+            setCurrentIndex((event.nativeEvent.contentOffset.x / Dimensions.get('window').width).toFixed(0));
+          }}
+          renderItem={({ item }) => (
+            <ImageBackground
+              source={loading || isLoading ? image.loader : { uri: item }}
+              style={{ width: Dimensions.get('window').width, height: Dimensions.get('window').height / 2 }}
+              resizeMode='cover'
+              onLoadEnd={() => setLoading(false)}
+            />
+          )}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          pagingEnabled
+        />
+
+        <View className="flex-row absolute bottom-0 left-0 right-0 justify-center">
+          {!loading && Home?.details?.map((item, index) => (
+            <View key={index} className={`size-4 bg-transparent border ${currentIndex == index ? "border-[#124BCC]" : "border-white bg-slate-600"} mx-1 mb-12 rounded-full`} />
+          ))}
+        </View>
+
+        <View className="absolute top-9 left-0 right-0 h-16 flex flex-row items-center justify-between mx-2 px-4">
+          <TouchableOpacity activeOpacity={0.7} className="bg-gray-100 rounded-full p-2" onPress={() => router.back()}>
+            <Entypo name="chevron-left" size={23} color="#334155" />
+          </TouchableOpacity>
+          <TouchableOpacity
+            activeOpacity={0.7}
+            className="bg-[#124BCC] rounded-full p-2"
+            onPress={() => {
+              addToFavorite(Home?._id);
+              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            }}
+          >
+            <Image source={user?.favorites?.includes(Home?._id) ? icons.heart : icons.love} className="w-6 h-6" tintColor="white" />
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      <View className="flex-1 px-4 my-2">
+        <ScrollView className="flex-1" nestedScrollEnabled showsVerticalScrollIndicator={false}>
+          {isLoading ? (
+            <View className="w-full h-full bg-white items-center justify-center my-5 p-4">
+              <View className="w-24 h-20 items-center my-5 justify-center" />
+              <ActivityIndicator size="large" color="#124BCC" animating />
+              <Text className="text-gray-400 mt-2">Please wait...</Text>
+            </View>
+          ) : (
+            <View>
+              <View className="px-2 flex-row items-center justify-between">
+                <View>
+                  {user?._id !== Home?.userId?._id && Home?.userId?._id && (
+                    <TouchableOpacity
+                      activeOpacity={0.7}
+                      onPress={() => router.push(`/ProfileUser/${Home.userId._id}`)}
+                      className="flex flex-row items-center mt-3"
+                    >
+                      <Image
+                        source={Home?.userId?.image_url ? { uri: Home.userId.image_url } : image.load}
+                        className="w-7 h-7 rounded-full"
+                      />
+                      <Text className="text-gray-500 text-sm ml-2">{Home?.userId?.name}</Text>
+                    </TouchableOpacity>
+                  )}
+                  <View className="flex flex-row items-center my-3">
+                    <Image source={icons.location} className="w-7 h-7" tintColor="#124BCC" />
+                    <Text className="text-gray-500 ml-2">Location: {Home?.city}</Text>
+                  </View>
+                </View>
+
+                <View>
+                  <View className="flex flex-row items-center mt-3">
+                    <Image source={icons.labell} className="w-7 h-7" tintColor="red" />
+                    <Text className="text-black text-xl ml-1 font-Churchillbold">
+                      {Home?.price && formatNumber(Home.price)} XAF
+                    </Text>
+                  </View>
+                  {user?._id !== Home?.userId?._id && (
+                    <TouchableOpacity activeOpacity={0.7} className={`${Home?.isAvailable ? "bg-[#12cc21a2]" : "bg-[#dc2626]"} border-green-900 rounded-full p-2 my-3`}>
+                      <Text className="text-white text-center font-bold">{Home?.isAvailable ? "Available" : "Taken"}</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              </View>
+
+              <View className="my-2 w-full px-2">
+                <Text className="text-lg font-bold">Title</Text>
+                <Text className="text-gray-500 mt-1">{Home?.address}</Text>
+              </View>
+
+              <View className="my-5 w-full px-2">
+                <Text className="text-lg font-bold">Description</Text>
+                <Text className="text-gray-500 mt-1">{Home?.description}</Text>
+              </View>
+
+              <TouchableOpacity activeOpacity={0.7} className="flex flex-row items-center" onPress={() => setIsOpen(true)}>
+                <Image source={icons.feedback} className="size-6" tintColor={"#124BCC"} />
+                <Text className="text-[#124BCC] ml-1 font-Churchill">
+                  {Home?.reviews?.length === 0
+                    ? "No review"
+                    : `${Home?.reviews?.length} ${Home?.reviews?.length === 1 ? "review" : "reviews"}`}
+                </Text>
+              </TouchableOpacity>
+
+              <View className="my-8 w-full px-2 flex flex-row items-center justify-start">
+                <Text className="text-lg font-bold">Category:</Text>
+                <Text className="text-gray-500 mt-1 ml-2">{Home?.category}</Text>
+              </View>
+
+              <View className="my-2 w-full flex-row items-center justify-start px-2">
+                <Text className="text-md font-bold">Contact:</Text>
+                <Text className="text-gray-500 text-md mx-1">{Home?.userId?.name}</Text>
+              </View>
+
+              <View className="my-4 flex flex-row items-center justify-start w-full px-2">
+                <TouchableOpacity activeOpacity={0.7} className="p-3 rounded-lg items-center justify-center"
+                  onPress={() => Linking.openURL(`${Home?.whatsapp_url}`)}>
+                  <Image source={icons.whatsapp} className="size-12" tintColor="green" />
+                </TouchableOpacity>
+                <TouchableOpacity activeOpacity={0.7} className="p-3 rounded-lg items-center justify-center"
+                  onPress={() => { if (!Home?.facebook_url) return; Linking.openURL(`${Home.facebook_url}`); }}>
+                  <Image source={icons.facebook} className="size-12" tintColor="blue" />
+                </TouchableOpacity>
+              </View>
+
+              {user?._id !== Home?.userId && (
+                <View className="mt-4 mb-8 w-full px-2">
+                  <TouchableOpacity activeOpacity={0.7} className="bg-[#124BCC] p-3 rounded-full items-center justify-center" onPress={checkUser}>
+                    <Text className="text-white text-lg font-semibold">Send message</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </View>
+          )}
+        </ScrollView>
+
+        {/* Reviews Modal */}
+        <Modal
+          visible={isOpen}
+          onRequestClose={() => setIsOpen(false)}
+          animationType='slide'
+          statusBarTranslucent={false}
+        >
+          {/* ✅ FIX: SafeAreaView edges top+bottom prevents modal from
+              overlapping the status bar and home indicator on all devices */}
+          <SafeAreaView edges={['top', 'bottom']} style={{ flex: 1, backgroundColor: '#fff' }}>
+            <KeyboardAvoidingView
+              style={{ flex: 1, justifyContent: 'space-between' }}
+              behavior={Platform.OS === "ios" ? "padding" : "height"}
+              keyboardVerticalOffset={Platform.OS === "ios" ? 20 : 0}
+            >
+              {/* Header */}
+              <View
+                className="flex-row items-center justify-between px-4 pt-4 pb-3 border-b border-gray-200"
+                style={{
+                  shadowColor: '#000',
+                  shadowOpacity: 0.03,
+                  shadowRadius: 3,
+                  shadowOffset: { width: 0, height: 1 },
+                  elevation: 2,
+                }}
+              >
+                <Text className="text-base font-bold text-gray-800">Reviews</Text>
+                <TouchableOpacity
+                  activeOpacity={0.6}
+                  onPress={() => setIsOpen(false)}
+                  className="rounded-full p-2"
+                >
+                  <Image source={icons.cancel} tintColor="#124BCC" className="size-5" />
+                </TouchableOpacity>
+              </View>
+
+              {/* Review list */}
+              <FlatList
+                data={Home?.reviews}
+                keyExtractor={(item, index) => item?._id?.toString() ?? index.toString()}
+                nestedScrollEnabled
+                keyboardShouldPersistTaps="handled"
+                className="p-4"
+                contentContainerStyle={{ paddingBottom: 20 }}
+                style={{ flex: 1 }}
+                renderItem={({ item }) => (
+                  <TouchableOpacity
+                    onPress={() => {
+                      const reviewerId = item?.user?._id;
+                      if (!reviewerId) return;
+                      router.push(`/ProfileUser/${reviewerId}`);
+                      setIsOpen(false);
+                    }}
+                    activeOpacity={0.7}
+                    className="w-full flex flex-row mt-3"
+                  >
+                    <Image
+                      source={
+                        item?.user?.image_url
+                          ? { uri: item.user.image_url }
+                          : image.load
+                      }
+                      className="size-10 rounded-full border"
+                    />
+                    <View className="ml-2 flex-1">
+                      <Text className="text-md text-gray-500">{item?.text}</Text>
+                      <View className="flex flex-row items-center justify-start">
+                        <Text className="text-gray-500 font-bold text-sm mr-3">
+                          {item?.user?.name ?? 'User'}
+                        </Text>
+                        <Text numberOfLines={1} className="text-gray-500 text-sm">
+                          {formatRelativeTime(item?._creationTime)}
+                        </Text>
+                      </View>
+                    </View>
+                  </TouchableOpacity>
+                )}
+                ListEmptyComponent={() => (
+                  <View className="w-full bg-white items-center justify-center my-5 p-4">
+                    <Image source={icons.evaluate} tintColor="gray" className="size-96 opacity-40" resizeMode='contain' />
+                    <Text className="text-gray-400 mt-2">No review yet.</Text>
+                    <Text className="text-gray-400 mt-2">Be the first to review this property!</Text>
+                  </View>
+                )}
+              />
+
+              {/* Input bar */}
+              <View
+                className="flex flex-row items-end p-4 bg-white border-t border-gray-100"
+                style={{
+                  shadowColor: '#000',
+                  shadowOpacity: 0.04,
+                  shadowRadius: 6,
+                  shadowOffset: { width: 0, height: -1 },
+                  elevation: 4,
+                }}
+              >
+                <View className="flex flex-row justify-start items-center flex-1">
+                  <Image
+                    source={user?.image_url ? { uri: user.image_url } : image.load}
+                    className="size-10 rounded-full border"
+                  />
+                  <TextInput
+                    placeholder='Add a review'
+                    placeholderTextColor='gray'
+                    onChangeText={(t) => setText(t)}
+                    value={text}
+                    className='border border-gray-200 rounded-full p-2 w-5/6 ml-3'
+                    multiline
+                    textAlignVertical='top'
+                  />
+                </View>
+                <TouchableOpacity
+                  activeOpacity={0.7}
+                  className={`${text.trim() ? "bg-[#124BCC]" : "bg-gray-200"} opacity-85 rounded-full p-2 ml-2`}
+                  onPress={handleSendMessage}
+                  disabled={!text.trim()}
+                >
+                  <Entypo name="paper-plane" size={24} color={text.trim() ? "white" : "gray"} />
+                </TouchableOpacity>
+              </View>
+
+            </KeyboardAvoidingView>
+          </SafeAreaView>
+        </Modal>
+      </View>
+    </View>
+  );
+};
+
+export default DetailPage;

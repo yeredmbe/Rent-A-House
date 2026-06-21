@@ -1,0 +1,338 @@
+import Constants from 'expo-constants';
+import * as Device from 'expo-device';
+import * as Notifications from 'expo-notifications';
+import { useRouter } from 'expo-router';
+import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import {
+    ActivityIndicator,
+    Image,
+    KeyboardAvoidingView,
+    Platform,
+    ScrollView,
+    Text,
+    TouchableOpacity,
+    View,
+} from 'react-native';
+import BouncyCheckbox from 'react-native-bouncy-checkbox';
+import DropShadow from 'react-native-drop-shadow';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { showToast } from 'rn-snappy-toast';
+import { AuthErrorModal } from '../../components/AuthErrorModal';
+import CustomButton from '../../components/CustomButton';
+import InputField from '../../components/InputField';
+import icons from '../../constant/icons';
+import { api } from '../../convex/_generated/api';
+import { convex, useStore } from '../../Stores/authStore';
+import { getAuthError } from '../lib/AuthErrors';
+
+Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+        shouldPlaySound: true,
+        shouldSetBadge: true,
+        shouldShowBanner: true,
+        shouldShowList: true,
+    }),
+});
+
+const SignUp = () => {
+    const { register, isLoading, isAuthenticated, user } = useStore();
+
+    const [check, setCheck] = useState(false);
+
+    const [formData, setFormData] = useState({
+        name: '',
+        email: '',
+        password: '',
+        role: 'client',
+    });
+
+    const [fieldErrors, setFieldErrors] = useState({ name: '', email: '', password: '' });
+
+    const [modal, setModal] = useState({ visible: false, title: '', message: '' });
+
+    const router = useRouter();
+    const { t } = useTranslation();
+
+    const showError = (code) => {
+        const { title, message } = getAuthError(code);
+        setModal({ visible: true, title, message });
+    };
+
+    const handleSubmit = async () => {
+        if (isLoading) return;
+
+        // ── Terms check → popup ──────────────────────────────────────────────────
+        if (!check) {
+            showError('TERMS_NOT_AGREED');
+            return;
+        }
+
+        // ── Inline field validation ──────────────────────────────────────────────
+        const errors = { name: '', email: '', password: '' };
+
+        if (!formData.name.trim()) {
+            errors.name = t('Name is required');
+        }
+
+        if (!formData.email) {
+            errors.email = t('Email is required');
+        } else if (!formData.email.includes('@')) {
+            errors.email = t('Enter a valid email address');
+        }
+
+        if (!formData.password) {
+            errors.password = t('Password is required');
+        } else if (formData.password.length < 6) {
+            errors.password = t('At least 6 characters');
+        }
+
+        if (errors.name || errors.email || errors.password) {
+            setFieldErrors(errors);
+            return;
+        }
+
+        setFieldErrors({ name: '', email: '', password: '' });
+
+        // ── Call store ───────────────────────────────────────────────────────────
+        // register() never throws — it always returns { error } or the data object.
+        // We check for error here and show the modal accordingly.
+        const res = await register({ ...formData });
+
+        if (res?.error) {
+            showError(res.error);
+            return;
+        }
+
+        setFormData({ name: '', email: '', password: '', role: 'client' });
+    };
+
+    useEffect(() => {
+        if (user) {
+            router.replace('/Home');
+        }
+    }, [user, router]);
+
+    if (isAuthenticated) {
+        return (
+            <View className="bg-white w-full h-full items-center justify-center">
+                <ActivityIndicator size="large" color="#124BCC" animating={isAuthenticated} />
+                <Text className="mt-2 ">{t('Loading')}</Text>
+            </View>
+        );
+    }
+
+    return (
+        <>
+            {/* ── Error popup ───────────────────────────────────────────────────── */}
+            <AuthErrorModal
+                visible={modal.visible}
+                title={modal.title}
+                message={modal.message}
+                onClose={() => setModal((m) => ({ ...m, visible: false }))}
+            />
+
+            <SafeAreaView className="flex-1 bg-white">
+                <KeyboardAvoidingView behavior="padding" className="h-full bg-white">
+                    <ScrollView className="h-full" showsVerticalScrollIndicator={false}>
+                        <View className="h-24 android:h-16" />
+
+                        <View className="flex flex-col items-center justify-center">
+                            <Text className="font-bold text-2xl">{t('welcome')} </Text>
+                            <Text className="text-[#124BCC] font-bold my-3 text-5xl font-Churchillbold">
+                                Rent A House
+                            </Text>
+                            <Text className="text-sm font-bold text-center font-Churchill">
+                                {t('createAccount')}
+                            </Text>
+                        </View>
+
+                        {/* ── Role picker ─────────────────────────────────────────────── */}
+                        <View className="flex flex-row items-center justify-between mt-5 px-5 mx-3">
+                            <TouchableOpacity
+                                onPress={() => setFormData({ ...formData, role: 'client' })}
+                                activeOpacity={0.7}
+                                className={`bg-white rounded-lg shadow-sm ${formData.role === 'client' ? 'shadow-blue-800' : 'shadow-gray-400'
+                                    }`}
+                            >
+                                {Platform.OS === 'ios' ? (
+                                    <DropShadow
+                                        className="size-36 items-center justify-center"
+                                        style={{
+                                            shadowColor: formData.role === 'client' ? '#124BCC' : '#000',
+                                            shadowOffset: { width: 0, height: 0 },
+                                            shadowOpacity: 0.6,
+                                            shadowRadius: 5,
+                                        }}
+                                    >
+                                        <Image
+                                            source={icons.client}
+                                            className="size-16 my-1"
+                                            resizeMode="contain"
+                                            tintColor={formData.role === 'client' ? '#124BCC' : '#000'}
+                                        />
+                                        <Text
+                                            className={`${formData.role === 'client' ? 'text-[#124BCC]' : 'text-gray-400 my-1'
+                                                } font-bold text-sm`}
+                                        >
+                                            Client
+                                        </Text>
+                                    </DropShadow>
+                                ) : (
+                                    <View className="size-36 items-center justify-center">
+                                        <Image
+                                            source={icons.client}
+                                            className="size-16 my-1"
+                                            resizeMode="contain"
+                                            tintColor={formData.role === 'client' ? '#124BCC' : '#000'}
+                                        />
+                                        <Text
+                                            className={`${formData.role === 'client' ? 'text-[#124BCC]' : 'text-gray-400 my-1'
+                                                } font-bold text-sm`}
+                                        >
+                                            Client
+                                        </Text>
+                                    </View>
+                                )}
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                                onPress={() => setFormData({ ...formData, role: 'landLord' })}
+                                activeOpacity={0.7}
+                                className={`bg-white rounded-lg shadow-sm ${formData.role === 'landLord' ? 'shadow-blue-800' : 'shadow-gray-400'
+                                    }`}
+                            >
+                                {Platform.OS === 'ios' ? (
+                                    <DropShadow
+                                        className="size-36 items-center justify-center"
+                                        style={{
+                                            shadowColor: formData.role === 'landLord' ? '#124BCC' : '#000',
+                                            shadowOffset: { width: 0, height: 0 },
+                                            shadowOpacity: 0.6,
+                                            shadowRadius: 5,
+                                        }}
+                                    >
+                                        <Image
+                                            source={icons.lender}
+                                            className="size-16 my-1"
+                                            resizeMode="contain"
+                                            tintColor={formData.role === 'landLord' ? '#124BCC' : '#000'}
+                                        />
+                                        <Text
+                                            className={`${formData.role === 'landLord' ? 'text-[#124BCC]' : 'text-gray-400'
+                                                } font-bold text-sm`}
+                                        >
+                                            {t('LandLord')}
+                                        </Text>
+                                    </DropShadow>
+                                ) : (
+                                    <View className="size-36 items-center justify-center">
+                                        <Image
+                                            source={icons.lender}
+                                            className="size-16 my-1"
+                                            resizeMode="contain"
+                                            tintColor={formData.role === 'landLord' ? '#124BCC' : '#000'}
+                                        />
+                                        <Text
+                                            className={`${formData.role === 'landLord' ? 'text-[#124BCC]' : 'text-gray-400'
+                                                } font-bold text-sm`}
+                                        >
+                                            {t('LandLord')}
+                                        </Text>
+                                    </View>
+                                )}
+                            </TouchableOpacity>
+                        </View>
+
+                        {/* ── Fields ──────────────────────────────────────────────────── */}
+                        <View className="flex items-center justify-center mt-3 mx-5">
+                            {/* Name */}
+                            <InputField
+                                label={t('name')}
+                                placeholder={t('namePlaceHolder')}
+                                styles="mx-2"
+                                value={formData.name}
+                                onTextChange={(text) => {
+                                    setFormData({ ...formData, name: text });
+                                    if (fieldErrors.name) setFieldErrors((e) => ({ ...e, name: '' }));
+                                }}
+                            />
+                            {!!fieldErrors.name && (
+                                <Text style={{ color: '#A32D2D', fontSize: 12, alignSelf: 'flex-start', marginLeft: 8, marginTop: 1, marginBottom: 6 }}>
+                                    {fieldErrors.name}
+                                </Text>
+                            )}
+
+                            {/* Email */}
+                            <InputField
+                                label={t('Email')}
+                                placeholder={t('emailPlaceHolder')}
+                                styles="mx-2"
+                                value={formData.email}
+                                onTextChange={(text) => {
+                                    setFormData({ ...formData, email: text });
+                                    if (fieldErrors.email) setFieldErrors((e) => ({ ...e, email: '' }));
+                                }}
+                            />
+                            {!!fieldErrors.email && (
+                                <Text style={{ color: '#A32D2D', fontSize: 12, alignSelf: 'flex-start', marginLeft: 8, marginTop: 1, marginBottom: 6 }}>
+                                    {fieldErrors.email}
+                                </Text>
+                            )}
+
+                            {/* Password */}
+                            <InputField
+                                label={t('Password')}
+                                placeholder="********"
+                                styles="mx-2"
+                                value={formData.password}
+                                onTextChange={(text) => {
+                                    setFormData({ ...formData, password: text });
+                                    if (fieldErrors.password) setFieldErrors((e) => ({ ...e, password: '' }));
+                                }}
+                            />
+                            {!!fieldErrors.password && (
+                                <Text style={{ color: '#A32D2D', fontSize: 12, alignSelf: 'flex-start', marginLeft: 8, marginTop: 1, marginBottom: 6 }}>
+                                    {fieldErrors.password}
+                                </Text>
+                            )}
+
+                            {/* Terms */}
+                            <View className="flex flex-row mt-2">
+                                <BouncyCheckbox
+                                    size={15}
+                                    fillColor="#123BCC"
+                                    unfillColor="#FFFFFF"
+                                    iconStyle={{ borderColor: '#9ca3af' }}
+                                    innerIconStyle={{ borderWidth: 1 }}
+                                    disableText={true}
+                                    textStyle={{ fontFamily: 'JosefinSans-Regular' }}
+                                    onPress={() => setCheck(!check)}
+                                />
+                                <Text className={`text-sm ml-2 ${check ? 'text-[#123BCC]' : 'text-gray-400'}`}>
+                                    {t('agree')}
+                                </Text>
+                            </View>
+
+                            <View className="flex justify-center items-center pt-2 flex-row gap-2">
+                                <Text className="text-lg text-black font-pregular">{t('alreadyHaveAccount')}</Text>
+                                <TouchableOpacity activeOpacity={0.8} onPress={() => router.push('/SignIn')}>
+                                    <Text className="text-lg font-semibold my-1 text-[#124BCC]">{t('Login')}</Text>
+                                </TouchableOpacity>
+                            </View>
+
+                            <CustomButton
+                                title={t('SignUp')}
+                                containerStyles="rounded-xl my-1 py-4"
+                                isLoading={isLoading}
+                                handlePress={handleSubmit}
+                            />
+                        </View>
+                    </ScrollView>
+                </KeyboardAvoidingView>
+            </SafeAreaView>
+        </>
+    );
+};
+
+export default SignUp;

@@ -1,0 +1,27 @@
+{
+  "cli": {
+    "version": ">= 16.27.0",
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal"
+    },
+    "preview": {
+      "distribution": "internal"
+    },
+    "production": {
+      "autoIncrement": true,
+      "env": {
+        "GOOGLE_SERVICE_JSON": "GOOGLE_SERVICE_JSON",
+        "EXPO_PUBLIC_CONVEX_URL": "https://woozy-warthog-859.convex.cloud",
+        "EXPO_PUBLIC_CONVEX_SITE_URL": "https://woozy-warthog-859.convex.site",
+        "JWT_SECRET": "this-my-jwt-secret-hahhahah"
+      }
+    }
+  },
+  "submit": {
+    "production": {}
+  }
+}
